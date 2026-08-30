@@ -1,0 +1,336 @@
+<div class="app-container">
+  <!-- TOP HEADER -->
+  <header class="header">
+    <div class="brand">
+      <span class="brand-icon">⚡</span>
+      <span>DBMSOnline</span>
+    </div>
+
+    <div class="header-actions">
+      <div class="security-badge">
+        <span>🔒</span>
+        <span>AES-256-GCM Encrypted</span>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" (click)="switchTab('audit')">
+        📋 Security Audit Logs
+      </button>
+
+      <button class="btn btn-sm" (click)="openNewConnectionModal()">
+        ➕ New Connection
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN BODY -->
+  <div class="main-body">
+    <!-- SIDEBAR CONNECTIONS & TABLES EXPLORER -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">
+          <span>Database Connections</span>
+          <span style="cursor: pointer;" (click)="loadConnections()">🔄</span>
+        </div>
+
+        <div *ngFor="let conn of connections"
+             class="connection-item"
+             [class.active]="selectedConnection?.id === conn.id"
+             (click)="selectConnection(conn)">
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem;">{{ conn.name }}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">{{ conn.host || 'local' }}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <span class="db-tag" [ngClass]="getDbTypeTagClass(conn.databaseType)">{{ getDbTypeName(conn.databaseType) }}</span>
+            <span (click)="deleteConnection(conn.id, $event)" title="Delete Connection" style="cursor: pointer; opacity: 0.6;">🗑️</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATABASES & TABLES TREE -->
+      <div class="sidebar-section" *ngIf="selectedConnection" style="flex: 1; overflow-y: auto;">
+        <div class="sidebar-title">Database Selector</div>
+        <select class="form-control" style="margin-bottom: 1rem;" [(ngModel)]="selectedDatabase" (change)="onDatabaseChange()">
+          <option *ngFor="let db of databases" [value]="db">{{ db }}</option>
+        </select>
+
+        <div class="sidebar-title">
+          <span>Tables & Views</span>
+          <span style="font-size: 0.7rem; color: var(--text-muted);">({{ tables.length }})</span>
+        </div>
+
+        <div *ngFor="let tbl of tables"
+             class="connection-item"
+             [class.active]="selectedTable === tbl.tableName"
+             (click)="selectTable(tbl.tableName)">
+          <div style="font-size: 0.85rem; font-family: var(--font-mono);">
+            <span style="color: var(--text-muted);">📄</span> {{ tbl.tableName }}
+          </div>
+          <span style="font-size: 0.65rem; color: var(--text-muted);">{{ tbl.tableType }}</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- WORKSPACE -->
+    <main class="workspace">
+      <!-- TABS BAR -->
+      <div class="tabs-bar">
+        <button class="tab-btn" [class.active]="activeTab === 'query'" (click)="switchTab('query')">
+          💻 SQL Query Editor
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'data'" (click)="switchTab('data')">
+          📊 Data Grid View ({{ selectedTable || 'Select Table' }})
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'audit'" (click)="switchTab('audit')">
+          🛡️ Security Audit Logs
+        </button>
+      </div>
+
+      <!-- TAB 1: QUERY EDITOR -->
+      <div class="tab-content" *ngIf="activeTab === 'query'">
+        <div class="query-editor-box">
+          <textarea class="query-textarea"
+                    [(ngModel)]="queryText"
+                    placeholder="Enter SQL or MongoDB Query (Ctrl+Enter to Execute)..."></textarea>
+
+          <div class="action-bar">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <button class="btn" (click)="runQuery()" [disabled]="isExecutingQuery">
+                <span *ngIf="!isExecutingQuery">▶️ Execute Query</span>
+                <span *ngIf="isExecutingQuery">⏳ Running...</span>
+              </button>
+
+              <span style="font-size: 0.8rem; color: var(--text-muted);">Target DB:</span>
+              <strong style="font-size: 0.85rem;">{{ selectedDatabase || 'None' }}</strong>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem;" *ngIf="queryResult">
+              <button class="btn btn-secondary btn-sm" (click)="exportToJson()">📥 Export JSON</button>
+              <button class="btn btn-secondary btn-sm" (click)="exportToCsv()">📥 Export CSV</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RISK & WARNING ALERT BADGES -->
+        <div *ngIf="queryResult?.warningMessage"
+             style="background: rgba(245, 158, 11, 0.15); border: 1px solid var(--warning); color: var(--warning); padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem;">
+          ⚠️ <strong>Security Advisory:</strong> {{ queryResult?.warningMessage }}
+        </div>
+
+        <div *ngIf="queryResult && !queryResult.success"
+             style="background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: var(--danger); padding: 0.75rem; border-radius: 6px; font-size: 0.85rem;">
+          ❌ <strong>Execution Error:</strong> {{ queryResult.errorMessage }}
+        </div>
+
+        <!-- RESULTS GRID TABLE -->
+        <div class="results-container" *ngIf="queryResult && queryResult.success">
+          <div style="padding: 0.5rem 0.75rem; background-color: #111827; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+            <span>Rows Returned: <strong>{{ queryResult.rows.length }}</strong></span>
+            <span>Duration: <strong>{{ queryResult.executionDurationMs }} ms</strong></span>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th *ngFor="let col of queryResult.columns">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of queryResult.rows">
+                  <td *ngFor="let col of queryResult.columns">{{ row[col] }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: DATA GRID VIEW -->
+      <div class="tab-content" *ngIf="activeTab === 'data'">
+        <div class="action-bar">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button class="btn btn-sm" (click)="openAddRowModal()">➕ Add Row</button>
+            <button class="btn btn-secondary btn-sm" (click)="loadTableData()">🔄 Refresh</button>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Total Rows: <strong>{{ dataPageResult?.totalRows || 0 }}</strong></span>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem;" *ngIf="dataPageResult">
+            <button class="btn btn-secondary btn-sm" [disabled]="currentPage <= 1" (click)="changePage(currentPage - 1)">◀ Prev</button>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Page {{ currentPage }} of {{ dataPageResult.totalPages || 1 }}</span>
+            <button class="btn btn-secondary btn-sm" [disabled]="currentPage >= dataPageResult.totalPages" (click)="changePage(currentPage + 1)">Next ▶</button>
+          </div>
+        </div>
+
+        <div class="results-container" style="flex: 1;">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width: 80px;">Actions</th>
+                  <th *ngFor="let col of dataPageResult?.columns">
+                    {{ col.columnName }}
+                    <span style="font-size: 0.65rem; color: var(--text-muted);">({{ col.dataType }})</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of dataPageResult?.rows">
+                  <td>
+                    <button class="btn btn-secondary btn-sm" style="padding: 2px 6px;" (click)="openEditRowModal(row)">✏️</button>
+                    <button class="btn btn-danger btn-sm" style="padding: 2px 6px; margin-left: 4px;" (click)="deleteRow(row)">🗑️</button>
+                  </td>
+                  <td *ngFor="let col of dataPageResult?.columns">{{ row[col.columnName] }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: AUDIT LOGS VIEW -->
+      <div class="tab-content" *ngIf="activeTab === 'audit'">
+        <div class="action-bar">
+          <strong style="font-size: 0.9rem;">Security Audit Trail</strong>
+          <button class="btn btn-secondary btn-sm" (click)="loadAuditLogs()">🔄 Refresh Logs</button>
+        </div>
+
+        <div class="results-container" style="flex: 1;">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Client IP</th>
+                  <th>User Role</th>
+                  <th>Action</th>
+                  <th>Target Engine</th>
+                  <th>Target DB</th>
+                  <th>Query / Operation</th>
+                  <th>Duration</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let log of auditLogs">
+                  <td style="font-size: 0.75rem;">{{ log.timestamp | date:'short' }}</td>
+                  <td>{{ log.clientIp }}</td>
+                  <td><span class="db-tag tag-sqlite">{{ log.userRole }}</span></td>
+                  <td><strong>{{ log.action }}</strong></td>
+                  <td>{{ getDbTypeName(log.databaseType) }}</td>
+                  <td>{{ log.targetDatabase }}</td>
+                  <td style="font-family: var(--font-mono); font-size: 0.75rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">{{ log.queryText }}</td>
+                  <td>{{ log.executionDurationMs }} ms</td>
+                  <td>
+                    <span *ngIf="log.success" style="color: var(--success); font-weight: 700;">✅ SUCCESS</span>
+                    <span *ngIf="!log.success" style="color: var(--danger); font-weight: 700;">❌ FAILED</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- CONNECTION MODAL -->
+  <div class="modal-overlay" *ngIf="showConnectionModal">
+    <div class="modal-card">
+      <h3 style="margin-bottom: 1rem;">Configure Database Connection</h3>
+
+      <div class="form-group">
+        <label>Connection Profile Name</label>
+        <input class="form-control" [(ngModel)]="connForm.name" placeholder="e.g. Production SQL Server">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Database Provider</label>
+          <select class="form-control" [(ngModel)]="connForm.databaseType" (change)="onDbTypeChange()">
+            <option [value]="DatabaseType.Sqlite">SQLite File DB</option>
+            <option [value]="DatabaseType.SqlServer">Microsoft SQL Server</option>
+            <option [value]="DatabaseType.PostgreSql">PostgreSQL</option>
+            <option [value]="DatabaseType.MySql">MySQL / MariaDB</option>
+            <option [value]="DatabaseType.MongoDb">MongoDB</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Auth Type</label>
+          <select class="form-control" [(ngModel)]="connForm.authType">
+            <option [value]="AuthType.BasicPassword">User & Password</option>
+            <option [value]="AuthType.WindowsAuth">Windows / Integrated Auth</option>
+            <option [value]="AuthType.ConnectionString">Custom Connection String</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row" *ngIf="connForm.databaseType !== DatabaseType.Sqlite">
+        <div class="form-group">
+          <label>Host / Server</label>
+          <input class="form-control" [(ngModel)]="connForm.host" placeholder="localhost or 192.168.1.100">
+        </div>
+        <div class="form-group">
+          <label>Port</label>
+          <input class="form-control" type="number" [(ngModel)]="connForm.port">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ connForm.databaseType === DatabaseType.Sqlite ? 'Database File Path' : 'Database Name' }}</label>
+        <input class="form-control" [(ngModel)]="connForm.databaseName" placeholder="demo_dbms.db or my_database">
+      </div>
+
+      <div class="form-row" *ngIf="connForm.authType === AuthType.BasicPassword">
+        <div class="form-group">
+          <label>Username</label>
+          <input class="form-control" [(ngModel)]="connForm.username" placeholder="sa, postgres, root">
+        </div>
+        <div class="form-group">
+          <label>Password (AES-256 Encrypted)</label>
+          <input class="form-control" type="password" [(ngModel)]="connForm.password">
+        </div>
+      </div>
+
+      <div class="form-group" style="display: flex; gap: 1.5rem; margin-top: 0.5rem;">
+        <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+          <input type="checkbox" [(ngModel)]="connForm.isReadOnly"> Read-Only Connection
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer;">
+          <input type="checkbox" [(ngModel)]="connForm.enforceSsl"> Enforce TLS/SSL
+        </label>
+      </div>
+
+      <!-- TEST STATUS FEEDBACK -->
+      <div *ngIf="connectionTestStatus"
+           [style.color]="connectionTestStatus.success ? 'var(--success)' : 'var(--danger)'"
+           style="margin-top: 0.75rem; font-size: 0.85rem; font-weight: 600;">
+        {{ connectionTestStatus.message }}
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem;">
+        <button class="btn btn-secondary" (click)="testConnection()">🧪 Test Connection</button>
+        <button class="btn btn-secondary" (click)="showConnectionModal = false">Cancel</button>
+        <button class="btn" (click)="saveConnection()">💾 Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW MUTATION MODAL -->
+  <div class="modal-overlay" *ngIf="showRowModal">
+    <div class="modal-card">
+      <h3 style="margin-bottom: 1rem;">{{ rowModalMode === 'insert' ? 'Insert New Row' : 'Edit Row Record' }}</h3>
+
+      <div *ngFor="let col of columns" class="form-group">
+        <label>{{ col.columnName }} <span style="font-size: 0.7rem; color: var(--text-muted);">({{ col.dataType }})</span></label>
+        <input class="form-control" [(ngModel)]="rowFormData[col.columnName]">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <button class="btn btn-secondary" (click)="showRowModal = false">Cancel</button>
+        <button class="btn" (click)="saveRowMutation()">💾 Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>

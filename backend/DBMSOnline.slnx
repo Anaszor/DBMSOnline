@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="DBMSOnline.Api/DBMSOnline.Api.csproj" />
+  <Project Path="DBMSOnline.Application/DBMSOnline.Application.csproj" />
+  <Project Path="DBMSOnline.Domain/DBMSOnline.Domain.csproj" />
+  <Project Path="DBMSOnline.Infrastructure/DBMSOnline.Infrastructure.csproj" />
+</Solution>

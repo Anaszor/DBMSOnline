@@ -1,0 +1,24 @@
+<div class="auth-wrapper">
+  <div class="auth-content">
+    <div class="card">
+      <div class="row align-items-center text-center">
+        <div class="col-md-12">
+          <div class="card-body">
+            <h4 class="mb-3 f-w-400">Sign in to DBMSOnline</h4>
+            <hr />
+            <form (submit)="onSubmit($event)">
+              <div class="input-group mb-3">
+                <input type="email" class="form-control" placeholder="Email address" [(ngModel)]="email" name="email" required />
+              </div>
+              <div class="input-group mb-4">
+                <input [type]="showPassword() ? 'text' : 'password'" class="form-control" placeholder="Password" [(ngModel)]="password" name="password" required />
+              </div>
+              <button class="btn btn-block btn-primary mb-4" type="submit">Signin</button>
+            </form>
+            <p class="mb-0 text-muted">Don't have an account? <a [routerLink]="['/register']" class="f-w-400">Signup</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

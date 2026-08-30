@@ -1,0 +1,6 @@
+@DBMSOnline.Api_HostAddress = http://localhost:5063
+
+GET {{DBMSOnline.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
