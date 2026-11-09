@@ -70,7 +70,7 @@
           <div class="sidebar-title">Database Selector</div>
           <select class="form-control" style="margin-bottom: 0.5rem;" [(ngModel)]="selectedDatabase" (change)="onDatabaseChange()">
             @for (db of databases; track db) {
-              <option [value]="db">{{ db }}</option>
+              <option [value]="db">{{ getShortDbName(db) }}</option>
             }
           </select>
 
@@ -204,13 +204,17 @@
 
             <!-- SSMS AUTOCOMPLETE SUGGESTIONS DROPDOWN -->
             @if (suggestOpen && suggestions.length > 0) {
-              <div class="autocomplete-dropdown" (click)="$event.stopPropagation()">
+              <div class="autocomplete-dropdown" [style.top.px]="suggestTop" [style.left.px]="suggestLeft" (click)="$event.stopPropagation()">
+                <div class="autocomplete-header">
+                  <span>💡 IntelliSense & Schema Auto-Suggest</span>
+                  <span style="font-size: 0.65rem; opacity: 0.8; font-weight: 500;">Tab / Enter to select</span>
+                </div>
                 @for (s of suggestions; track s.text; let i = $index) {
                   <div class="autocomplete-item"
                        [class.active]="i === suggestIndex"
                        (mousedown)="$event.preventDefault(); applySuggestion(s)">
                     <span class="autocomplete-badge" [ngClass]="'badge-' + s.type">
-                      {{ s.type === 'keyword' ? '[K] KEYWORD' : s.type === 'table' ? '[T] TABLE' : s.type === 'view' ? '[V] VIEW' : s.type === 'pk' ? '🔑 PK' : s.type === 'fk' ? '🔗 FK' : '[C] COLUMN' }}
+                      {{ s.type === 'condition' ? '⚡ CONDITION' : s.type === 'keyword' ? '[K] KEYWORD' : s.type === 'table' ? '[T] TABLE' : s.type === 'view' ? '[V] VIEW' : s.type === 'pk' ? '🔑 PK' : s.type === 'fk' ? '🔗 FK' : '[C] COLUMN' }}
                     </span>
                     <span class="autocomplete-text">{{ s.text }}</span>
                     @if (s.info) {
@@ -222,12 +226,14 @@
             }
 
             <div class="action-bar">
-              <button class="btn" (click)="runQuery()" [disabled]="isExecutingQuery" title="Execute Query (F5 or Ctrl+Enter)">
-                @if (isExecutingQuery) { ⏳ Executing... } @else { ▶️ Execute Query <span style="font-size: 0.72rem; background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 4px; margin-left: 4px;">F5</span> }
-              </button>
-              <span style="font-size: 0.85rem; color: #64748b;">Target DB: <strong>{{ selectedDatabase }}</strong></span>
+              <div style="display: flex; align-items: center; gap: 1.25rem;">
+                <button class="btn" (click)="runQuery()" [disabled]="isExecutingQuery" title="Execute Query (F5 or Ctrl+Enter)">
+                  @if (isExecutingQuery) { ⏳ Executing... } @else { ▶️ Execute Query <span style="font-size: 0.72rem; background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 4px; margin-left: 4px;">F5</span> }
+                </button>
+                <span style="font-size: 0.85rem; color: #64748b;">Target DB: <strong style="color: #0284c7;">{{ getShortDbName(selectedDatabase) }}</strong></span>
+              </div>
               @if (queryResult) {
-                <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem;">
                   <button class="btn btn-secondary btn-sm" (click)="exportJson()">📥 Export JSON</button>
                   <button class="btn btn-secondary btn-sm" (click)="exportCsv()">📊 Export CSV</button>
                 </div>

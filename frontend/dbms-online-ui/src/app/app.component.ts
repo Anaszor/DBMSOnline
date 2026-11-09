@@ -551,10 +551,22 @@ export class AppComponent implements OnInit {
   // Autocomplete Auto-suggest State & Full Database Schema Cache
   suggestOpen = false;
   suggestIndex = 0;
-  suggestions: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk'; info?: string }[] = [];
+  suggestTop = 75;
+  suggestLeft = 40;
+  suggestions: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk' | 'condition'; info?: string }[] = [];
   allDatabaseColumns: Map<string, ColumnSchema[]> = new Map();
   private activeWordStart = 0;
   private activeWordEnd = 0;
+
+  readonly sqlConditions: { text: string; info: string }[] = [
+    { text: 'LIKE', info: 'Pattern matching condition' },
+    { text: 'BETWEEN', info: 'Range filter condition' },
+    { text: 'IN', info: 'Set membership condition' },
+    { text: 'IS NOT NULL', info: 'Non-null check condition' },
+    { text: 'IS NULL', info: 'Null check condition' },
+    { text: 'AND', info: 'Logical conjunction condition' },
+    { text: 'OR', info: 'Logical disjunction condition' }
+  ];
 
   readonly sqlKeywords: string[] = [
     'SELECT', 'FROM', 'WHERE', 'INSERT INTO', 'UPDATE', 'DELETE FROM',
@@ -696,6 +708,12 @@ export class AppComponent implements OnInit {
 
   get dataPageRows(): Record<string, any>[] {
     return this.dataPageResult?.rows || [];
+  }
+
+  getShortDbName(name: string): string {
+    if (!name) return 'eCommerceStore.db';
+    const parts = name.split(/[/\\]/);
+    return parts[parts.length - 1];
   }
 
   isSqlite(type: any): boolean {
@@ -954,6 +972,13 @@ export class AppComponent implements OnInit {
     const caretPos = textarea.selectionStart;
     const textBeforeCaret = textarea.value.substring(0, caretPos);
 
+    // Compute dynamic caret-aligned position for the IntelliSense dropdown
+    const lines = textBeforeCaret.split('\n');
+    const currentLineNum = lines.length;
+    const currentCol = lines[lines.length - 1].length;
+    this.suggestTop = Math.min(145, Math.max(38, (currentLineNum - 1) * 22 + 42));
+    this.suggestLeft = Math.min(520, Math.max(20, Math.min(currentCol * 8.2 + 15, 450)));
+
     // 1. Table Dot Navigation: "tableName." or "[tableName]."
     const dotMatch = textBeforeCaret.match(/([a-zA-Z0-9_\"\.\[\]]+)\.([a-zA-Z0-9_]*)$/);
     if (dotMatch) {
@@ -965,7 +990,7 @@ export class AppComponent implements OnInit {
       ) || this.selectedTable;
 
       const cols = this.allDatabaseColumns.get(targetTableKey) || this.columns || [];
-      const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk'; info?: string }[] = [];
+      const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk' | 'condition'; info?: string }[] = [];
 
       cols.forEach(c => {
         if (!colPrefix || c.columnName.toLowerCase().includes(colPrefix)) {
@@ -977,15 +1002,37 @@ export class AppComponent implements OnInit {
       if (list.length > 0) {
         this.activeWordStart = caretPos - dotMatch[2].length;
         this.activeWordEnd = caretPos;
-        this.suggestions = list.slice(0, 12);
+        this.suggestions = list.slice(0, 15);
         this.suggestIndex = 0;
         this.suggestOpen = true;
         return;
       }
     }
 
-    // 2. SSMS Clause Context Trigger: Check if caret is after WHERE, SELECT, SET, ORDER BY, GROUP BY, ON, AND, OR
-    const clauseMatch = textBeforeCaret.match(/(?:WHERE|SELECT|SET|ORDER\s+BY|GROUP\s+BY|ON|AND|OR)\s+([a-zA-Z0-9_\"\[\]]*)$/i);
+    // 2. SSMS FROM / JOIN Clause Trigger: prioritize Tables
+    const fromJoinMatch = textBeforeCaret.match(/(?:FROM|JOIN|INTO|UPDATE)\s+([a-zA-Z0-9_\"\[\]]*)$/i);
+    if (fromJoinMatch) {
+      const typedWord = fromJoinMatch[1].replace(/[\"\[\]]/g, '');
+      const lowerWord = typedWord.toLowerCase();
+      this.activeWordStart = caretPos - fromJoinMatch[1].length;
+      this.activeWordEnd = caretPos;
+
+      const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk' | 'condition'; info?: string }[] = [];
+      (this.tables || []).forEach(t => {
+        if (!lowerWord || t.tableName.toLowerCase().includes(lowerWord)) {
+          list.push({ text: t.tableName, type: 'table', info: `${t.tableType || 'TABLE'} (${t.approxRowCount || 0} rows)` });
+        }
+      });
+      if (list.length > 0) {
+        this.suggestions = list.slice(0, 15);
+        this.suggestIndex = 0;
+        this.suggestOpen = true;
+        return;
+      }
+    }
+
+    // 3. SSMS Clause Context Trigger: Check if caret is after WHERE, SELECT, SET, ORDER BY, GROUP BY, ON, AND, OR, HAVING
+    const clauseMatch = textBeforeCaret.match(/(?:WHERE|SELECT|SET|ORDER\s+BY|GROUP\s+BY|ON|AND|OR|HAVING)\s+([a-zA-Z0-9_\"\[\]]*)$/i);
     const targetTable = this.extractTargetTableFromQuery(textarea.value);
     const targetCols = this.allDatabaseColumns.get(targetTable) || this.columns || [];
 
@@ -996,7 +1043,7 @@ export class AppComponent implements OnInit {
       this.activeWordStart = caretPos - clauseMatch[1].length;
       this.activeWordEnd = caretPos;
 
-      const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk'; info?: string }[] = [];
+      const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk' | 'condition'; info?: string }[] = [];
 
       // A. Priority 1: Columns of the FROM table (SSMS Behavior!)
       targetCols.forEach(c => {
@@ -1006,36 +1053,40 @@ export class AppComponent implements OnInit {
         }
       });
 
-      // B. Priority 2: Columns of all other tables in database
-      this.allDatabaseColumns.forEach((cols, tblName) => {
-        if (tblName.toLowerCase() !== targetTable.toLowerCase()) {
-          cols.forEach(c => {
-            if ((!lowerWord || c.columnName.toLowerCase().includes(lowerWord)) && !list.some(item => item.text === c.columnName)) {
-              const typeTag = c.isPrimaryKey ? 'pk' : c.isForeignKey ? 'fk' : 'column';
-              list.push({ text: c.columnName, type: typeTag, info: `${c.dataType} (${tblName})` });
-            }
-          });
+      // B. Priority 2: Conditions (LIKE, BETWEEN, IN, IS NOT NULL, etc.)
+      this.sqlConditions.forEach(cond => {
+        if (!lowerWord || cond.text.toLowerCase().includes(lowerWord)) {
+          if (!list.some(item => item.text === cond.text)) {
+            list.push({ text: cond.text, type: 'condition', info: cond.info });
+          }
         }
       });
 
-      // C. Priority 3: Keywords
-      if (lowerWord) {
-        this.sqlKeywords.forEach(kw => {
-          if (kw.toLowerCase().startsWith(lowerWord) && !list.some(item => item.text === kw)) {
-            list.push({ text: kw, type: 'keyword', info: 'SQL Keyword' });
+      // C. Priority 3: Tables in database
+      (this.tables || []).forEach(t => {
+        if (!lowerWord || t.tableName.toLowerCase().includes(lowerWord)) {
+          if (!list.some(item => item.text === t.tableName)) {
+            list.push({ text: t.tableName, type: 'table', info: t.tableType || 'TABLE' });
           }
-        });
-      }
+        }
+      });
+
+      // D. Priority 4: Keywords & Clauses
+      this.sqlKeywords.forEach(kw => {
+        if (lowerWord && kw.toLowerCase().startsWith(lowerWord) && !list.some(item => item.text === kw)) {
+          list.push({ text: kw, type: 'keyword', info: 'SQL Clause' });
+        }
+      });
 
       if (list.length > 0) {
-        this.suggestions = list.slice(0, 12);
+        this.suggestions = list.slice(0, 15);
         this.suggestIndex = 0;
         this.suggestOpen = true;
         return;
       }
     }
 
-    // 3. Standard Word Matching (when not after clause keyword)
+    // 4. Standard Word Matching (when not after clause keyword)
     const match = textBeforeCaret.match(/([a-zA-Z0-9_\"\[\]]+)$/);
     if (!match) {
       this.suggestOpen = false;
@@ -1052,9 +1103,9 @@ export class AppComponent implements OnInit {
     this.activeWordEnd = caretPos;
 
     const lowerWord = currentWord.toLowerCase();
-    const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk'; info?: string }[] = [];
+    const list: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk' | 'condition'; info?: string }[] = [];
 
-    // A. Matching Columns of the FROM Table
+    // Columns of the Target Table
     targetCols.forEach(c => {
       if (c.columnName.toLowerCase().includes(lowerWord)) {
         const typeTag = c.isPrimaryKey ? 'pk' : c.isForeignKey ? 'fk' : 'column';
@@ -1062,14 +1113,21 @@ export class AppComponent implements OnInit {
       }
     });
 
-    // B. Matching Tables
+    // Tables
     (this.tables || []).forEach(t => {
       if (t.tableName.toLowerCase().includes(lowerWord) && !list.some(item => item.text === t.tableName)) {
-        list.push({ text: t.tableName, type: 'table', info: t.tableType });
+        list.push({ text: t.tableName, type: 'table', info: t.tableType || 'TABLE' });
       }
     });
 
-    // C. Matching Columns Across ALL Tables
+    // Conditions
+    this.sqlConditions.forEach(cond => {
+      if (cond.text.toLowerCase().includes(lowerWord) && !list.some(item => item.text === cond.text)) {
+        list.push({ text: cond.text, type: 'condition', info: cond.info });
+      }
+    });
+
+    // Columns Across ALL Tables
     this.allDatabaseColumns.forEach((cols, tblName) => {
       cols.forEach(c => {
         if (c.columnName.toLowerCase().includes(lowerWord) && !list.some(item => item.text === c.columnName)) {
@@ -1079,7 +1137,7 @@ export class AppComponent implements OnInit {
       });
     });
 
-    // D. Matching SQL Keywords
+    // Keywords
     this.sqlKeywords.forEach(kw => {
       if (kw.toLowerCase().startsWith(lowerWord) && !list.some(item => item.text === kw)) {
         list.push({ text: kw, type: 'keyword', info: 'SQL Keyword' });
@@ -1087,7 +1145,7 @@ export class AppComponent implements OnInit {
     });
 
     if (list.length > 0) {
-      this.suggestions = list.slice(0, 12);
+      this.suggestions = list.slice(0, 15);
       this.suggestIndex = 0;
       this.suggestOpen = true;
     } else {
@@ -1112,7 +1170,7 @@ export class AppComponent implements OnInit {
     }
   }
 
-  applySuggestion(item: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk'; info?: string }): void {
+  applySuggestion(item: { text: string; type: 'keyword' | 'table' | 'column' | 'pk' | 'fk' | 'condition'; info?: string }): void {
     if (!item) return;
 
     const dbType = Number(this.selectedConnection?.databaseType);

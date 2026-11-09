@@ -270,13 +270,13 @@ app-root {
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .query-textarea {
   width: 100%;
-  height: 160px;
+  height: 210px;
   background-color: #1e293b;
   color: #38bdf8;
   border: none;
@@ -696,22 +696,37 @@ app-root {
 /* SSMS AUTOCOMPLETE SUGGESTION DROPDOWN */
 .query-editor-box {
   position: relative;
+  overflow: visible !important;
 }
 
 .autocomplete-dropdown {
   position: absolute;
-  top: 130px;
-  left: 20px;
-  z-index: 9999;
+  top: 75px;
+  left: 30px;
+  z-index: 99999;
   background-color: #ffffff;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #94a3b8;
   border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  max-height: 220px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  max-height: 380px;
   overflow-y: auto;
-  min-width: 240px;
-  padding: 0.35rem 0;
+  min-width: 380px;
+  max-width: 520px;
+  padding: 0;
   animation: contextMenuFadeIn 0.1s ease-out;
+}
+
+.autocomplete-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.3px;
 }
 
 .autocomplete-item {
@@ -723,6 +738,7 @@ app-root {
   font-family: Consolas, Monaco, monospace;
   color: #1e293b;
   cursor: pointer;
+  border-bottom: 1px solid #f8fafc;
   transition: background 0.1s ease;
 }
 
@@ -737,9 +753,11 @@ app-root {
   padding: 2px 6px;
   border-radius: 4px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .badge-keyword { background: #e0f2fe; color: #0284c7; }
+.badge-condition { background: #fef08a; color: #854d0e; border: 1px solid #fde047; }
 .badge-table { background: #fef3c7; color: #d97706; }
 .badge-column { background: #dcfce7; color: #16a34a; }
 .badge-pk { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
@@ -750,6 +768,8 @@ app-root {
   font-size: 0.7rem;
   color: #64748b;
   font-weight: 500;
+  white-space: nowrap;
+  padding-left: 0.5rem;
 }
 
 .autocomplete-item.active .autocomplete-info {
@@ -757,6 +777,7 @@ app-root {
 }
 
 .autocomplete-item.active .badge-keyword,
+.autocomplete-item.active .badge-condition,
 .autocomplete-item.active .badge-table,
 .autocomplete-item.active .badge-column,
 .autocomplete-item.active .badge-pk,

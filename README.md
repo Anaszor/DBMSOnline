@@ -68,6 +68,10 @@ You can have a **PostgreSQL** cloud instance, an **Azure SQL Server**, an **Orac
 *With one click on **Apply Fix & Execute Now**, the repaired query (`SELECT * FROM Products ORDER BY Price DESC LIMIT 5;`) executes immediately with sub-millisecond execution duration and real-time telemetry.*
 ![SQL Query Editor Execution Results](docs/screenshots/01_query_editor.png)
 
+#### Step 3: Smart IntelliSense Auto-Suggest (Columns, Tables, Conditions & Keywords)
+*As developers compose queries, the built-in SSMS-style IntelliSense engine actively introspects the active database schema catalog in real-time, providing categorized autocompletions with visual type badges for Table Columns (`[C]`), Primary Keys (`🔑 PK`), Foreign Keys (`🔗 FK`), Catalog Tables (`[T]`), SQL Condition Operators (`⚡ CONDITION`), and Dialect Clauses (`[K]`).*
+![SQL Query Editor IntelliSense Auto-Suggest](docs/screenshots/01c_sql_editor_autosuggest.png)
+
 ### 2. Reactive Data Grid & Inline Record Mutations
 *Explore tables with server-side pagination, sorting, column data types, primary key markers, and inline row editing.*
 ![Data Grid View](docs/screenshots/02_data_grid.png)
