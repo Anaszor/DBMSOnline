@@ -1,8 +1,9 @@
 # ⚡ DBMSOnline Studio
 
-> **Enterprise-Grade Multi-Engine Database Management & Visual Analytics Platform**  
-> *Engineered with ASP.NET Core 9 (Clean Architecture) and Modern Angular SPA with Real-Time SignalR Streaming.*
+> **Cloud-Native, 100% Online Multi-Engine Database Management & Visual Analytics Platform**  
+> *Connect to any database hosted anywhere in the cloud or on-premise directly from your browser. Engineered with ASP.NET Core 9 (Clean Architecture) and Modern Angular SPA with Real-Time SignalR Streaming.*
 
+[![Online Platform](https://img.shields.io/badge/Platform-100%25%20Web%20%26%20Cloud--Native-00C7B7?logo=googlechrome&logoColor=white)](https://github.com/Anaszor/DBMSOnline)
 [![.NET 9](https://img.shields.io/badge/.NET-9.0%20%2F%2010.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Angular](https://img.shields.io/badge/Angular-18%2B%20%2F%2019-DD0031?logo=angular&logoColor=white)](https://angular.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -10,34 +11,54 @@
 [![Security](https://img.shields.io/badge/Encryption-AES--256--GCM-success)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+<p align="center">
+  <img src="https://img.shields.io/badge/PostgreSQL-Render%20%7C%20Supabase%20%7C%20AWS%20RDS-336791?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Microsoft%20SQL%20Server-Azure%20SQL%20%7C%20MSSQL-CC292B?logo=microsoftsqlserver&logoColor=white" alt="MSSQL" />
+  <img src="https://img.shields.io/badge/Oracle%20DB-OCI%20%7C%20Autonomous%20%7C%20On--Prem-F80000?logo=oracle&logoColor=white" alt="Oracle" />
+  <img src="https://img.shields.io/badge/MySQL-AWS%20Aurora%20%7C%20Cloud%20SQL-4479A1?logo=mysql&logoColor=white" alt="MySQL" />
+  <img src="https://img.shields.io/badge/MongoDB-Atlas%20Cloud%20Clusters-47A248?logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/SQLite-Embedded%20%26%20File%20DB-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
+</p>
+
 ---
 
 ## 🌟 Overview
 
-**DBMSOnline Studio** is a unified, cloud-ready web platform that transforms how engineering, DevOps, and business intelligence teams interact with heterogeneous database engines. Instead of requiring disparate client applications (such as SSMS, pgAdmin, MySQL Workbench, or DBeaver), DBMSOnline delivers a single, hardened web portal capable of querying, managing, visualizing, and backing up databases across on-premise and cloud infrastructures.
+**DBMSOnline Studio** is a modern, 100% web-based database management and business intelligence platform designed from the ground up for the cloud era. Unlike traditional desktop-bound tools (like SSMS, pgAdmin, Oracle SQL Developer, or DBeaver) that must be installed locally and often struggle across operating systems, DBMSOnline runs entirely in the browser. 
 
-### Key Capabilities at a Glance
+It provides an enterprise-ready single pane of glass allowing developers, DBAs, and data analysts to connect to, query, visualize, and back up **any database located anywhere in the world**—whether hosted on **AWS**, **Microsoft Azure**, **Google Cloud Platform**, **Render**, **Supabase**, **Neon**, **MongoDB Atlas**, **Oracle Cloud (OCI)**, private VPS servers, or local development instances.
 
-- **Multi-Engine Support**: Native provider abstraction for **PostgreSQL**, **Microsoft SQL Server**, **MySQL**, **SQLite**, **Oracle**, and **MongoDB**.
-- **Interactive Multi-Tab SQL Editor**: Full syntax coloring, autocomplete suggestions, multi-tab execution, execution duration telemetry, and CSV/JSON export.
-- **Static Query Safety Engine**: Pre-execution risk assessment categorizing queries into *Safe*, *Low*, *Moderate*, *High*, and *Critical* risk to prevent unintended drops, truncations, or table scans.
-- **Reactive Data Grid**: In-browser record inspection, sorting, filtering, pagination, and direct row mutations (Add / Edit / Delete).
-- **Interactive Schema & ER Diagram Canvas**: Real-time visualization of database tables, column types, primary keys, and foreign-key relationships.
-- **PowerBI-Style Visual Analytics Engine**: Drag-and-drop dashboard creator with 30+ visual widgets (Bar, Column, Line, Area, Funnel, Waterfall, Treemap, Donut, Gauges, KPI Cards) with date hierarchy drill-down and aggregations (`SUM`, `AVG`, `COUNT`, `MIN`, `MAX`).
-- **Enterprise Security & Compliance**:
-  - **AES-256-GCM** authenticated credential and connection string encryption.
-  - **SSRF Guard** to prevent internal network scanning and unauthorized localhost traversal.
-  - **Dynamic PII & Sensitive Column Masking** (passwords, auth tokens, secrets).
-  - **Immutable Security Audit Log** capturing client IP, timestamp, user role, engine target, and query execution hash.
-- **Database Maintenance Suite**: Full database backup snapshots, restore workflows, CSV/JSON data import, and SQL dump export.
-- **SignalR Real-Time Streaming**: Live execution status, progress notifications, and query execution cancellation.
+---
+
+## 🌐 100% Online & Multi-Database by Design
+
+### 🌍 Connect Anywhere Online (Not Just Your Local Machine)
+DBMSOnline is not limited to localhost or your internal network. You can securely connect to:
+- **Cloud-Managed Databases**: AWS RDS, Azure SQL Database, GCP Cloud SQL, Render PostgreSQL, Supabase, Neon Serverless Postgres, PlanetScale, MongoDB Atlas.
+- **Remote Servers & VPS**: Any remote Linux or Windows server hosting database services globally via custom ports, connection strings, and enforced TLS/SSL.
+- **Hybrid & On-Premises**: Corporate data centers, private cloud clusters, and containerized database instances (Docker/Kubernetes).
+- **Zero Local Client Footprint**: Access your entire database fleet from any laptop, desktop, tablet, or OS through any standard web browser without installing heavy database client packages or drivers.
+
+### 🔀 Simultaneous Multi-Engine Database Connectivity
+Manage, inspect, and switch between completely different database systems in real time within the **exact same workspace**:
+
+| Engine | Deployment Scenarios Supported | Authentication Types |
+|---|---|---|
+| 🐘 **PostgreSQL** | Render Cloud, Supabase, Neon, AWS RDS, On-Prem | Password, SSL/TLS Certificates, Connection String |
+| 🏢 **Microsoft SQL Server (MSSQL)** | Azure SQL, AWS RDS for SQL Server, On-Prem, Express | SQL Auth, Windows Integrated Auth, Encrypted Connection String |
+| 🏛️ **Oracle Database** | Oracle Cloud Infrastructure (OCI), Autonomous DB, On-Prem 19c/21c | Standard Auth, TNS / Service Name, EZConnect |
+| 🐬 **MySQL / MariaDB** | AWS Aurora MySQL, Google Cloud SQL, PlanetScale, DigitalOcean | Native Password, SSL CA/Cert, Connection String |
+| 🍃 **MongoDB** | MongoDB Atlas Cloud, Self-Hosted Sharded Replica Sets | SCRAM-SHA-256, Mongo Connection Strings (mongodb+srv) |
+| 🪶 **SQLite** | Local / Shared Volume Embedded Databases, Demo DBs | Direct File Storage & In-Memory Instances |
+
+You can have a **PostgreSQL** cloud instance, an **Azure SQL Server**, an **Oracle production DB**, and a **MySQL cluster** active in your sidebar simultaneously, switching between them with a single click without disconnecting or reloading your session.
 
 ---
 
 ## 📸 Screenshots & Visual Tour
 
 ### 1. Multi-Tab SQL Query Editor with Risk Telemetry
-*Execute complex SQL scripts across different database engines with real-time performance metrics and AST risk profiling.*
+*Execute complex SQL scripts across different database engines with real-time performance metrics, AST risk profiling, and dynamic data masking.*
 ![SQL Query Editor](docs/screenshots/01_query_editor.png)
 
 ### 2. Reactive Data Grid & Inline Record Mutations
@@ -61,7 +82,7 @@
 ![Enterprise Admin Console](docs/screenshots/06_admin_console.png)
 
 ### 7. Multi-Engine Connection Profile Manager
-*Configure and test database connections with TLS/SSL enforcement and read-only safety locks.*
+*Configure and test database connections across PostgreSQL, MSSQL, Oracle, MySQL, SQLite, and MongoDB with TLS/SSL enforcement.*
 ![Connection Profile Manager](docs/screenshots/07_connection_modal.png)
 
 ### 8. Database Snapshot Backup & Restoration Console
@@ -113,7 +134,7 @@ Ensure you have the following installed on your development machine:
 - [.NET 9.0 SDK](https://dotnet.microsoft.com/download) (or higher)
 - [Node.js](https://nodejs.org/) (v18.x, v20.x, or v22+)
 - [npm](https://www.npmjs.com/) (v9.x or higher)
-- Any supported database instance (PostgreSQL, SQL Server, MySQL) or use the included **Local SQLite Demo DB**.
+- Any supported online or local database instance (PostgreSQL, SQL Server, Oracle, MySQL, MongoDB) or use the included **Local SQLite Demo DB**.
 
 ---
 
