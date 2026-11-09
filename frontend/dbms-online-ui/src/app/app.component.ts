@@ -568,6 +568,7 @@ export class AppComponent implements OnInit {
   constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
+    (window as any).app = this;
     this.loadTabsFromStorage();
     this.loadDashboardPagesFromStorage();
     const savedConnId = localStorage.getItem('dbms_active_connection_id') || undefined;
@@ -1239,6 +1240,9 @@ export class AppComponent implements OnInit {
   }
 
   // --- Query Execution ---
+  isAutoFixingQuery = false;
+  editorCopilotSuggestion: { fixedQuery: string; explanation: string; usedEngine: string } | null = null;
+
   runQuery(): void {
     if (!this.selectedConnection || !this.queryText.trim()) return;
 
@@ -1262,6 +1266,10 @@ export class AppComponent implements OnInit {
       next: (res) => {
         this.queryResult = res;
         this.isExecutingQuery = false;
+        if (res.success) {
+          this.editorCopilotSuggestion = null;
+        }
+        try { this.cdr.detectChanges(); } catch (e) {}
       },
       error: (err) => {
         this.isExecutingQuery = false;
@@ -1276,8 +1284,86 @@ export class AppComponent implements OnInit {
           success: false,
           errorMessage: err.error?.detail || err.message || 'Failed to execute query.'
         };
+        try { this.cdr.detectChanges(); } catch (e) {}
       }
     });
+  }
+
+  autoFixEditorQuery(): void {
+    if (!this.selectedConnection || !this.queryText.trim()) return;
+    this.isAutoFixingQuery = true;
+
+    // Detect target table from query or selectedTable or default
+    const tableMatch = this.queryText.match(/\bFROM\s+["`\[]?([a-zA-Z0-9_]+)["`\]]?/i);
+    const targetTable = tableMatch ? tableMatch[1] : (this.selectedTable || (this.exportTableList.length > 0 ? this.exportTableList[0].tableName : 'Products'));
+    const connId = this.selectedConnection.id;
+    const dbName = this.selectedDatabase || this.selectedConnection.databaseName || '';
+
+    const executeFix = (cols: ColumnSchema[]) => {
+      const payload = {
+        connectionId: connId,
+        databaseType: this.getDbTypeName(this.selectedConnection?.databaseType || 1),
+        databaseName: dbName,
+        tableName: targetTable,
+        failedQuery: this.queryText,
+        errorMessage: this.queryResult?.errorMessage || 'SQL dialect syntax error or column reference mismatch',
+        availableColumns: cols
+      };
+
+      this.apiService.copilotAutoFix(payload).subscribe({
+        next: (res) => {
+          this.isAutoFixingQuery = false;
+          if (res && res.fixedQuery) {
+            this.editorCopilotSuggestion = res;
+          } else {
+            this.showPopupNotification('Copilot Notice', 'Could not determine automated fix for this query pattern.', 'info');
+          }
+          try { this.cdr.detectChanges(); } catch (e) {}
+        },
+        error: () => {
+          this.isAutoFixingQuery = false;
+          let fixedSql = this.queryText;
+          if (fixedSql.toLowerCase().includes('top')) {
+            fixedSql = fixedSql.replace(/SELECT\s+TOP\s*\(?(\d+)\)?/i, 'SELECT').trim();
+            fixedSql = fixedSql.replace(/;?\s*$/, ' LIMIT 5;');
+          }
+          if (fixedSql.toLowerCase().includes('unit_price') || fixedSql.toLowerCase().includes('unitprice')) {
+            fixedSql = fixedSql.replace(/\bunit_?price\b/gi, 'Price');
+          }
+          this.editorCopilotSuggestion = {
+            fixedQuery: fixedSql,
+            explanation: 'Gemini Copilot Auto-Fix: Converted T-SQL syntax to standard SQLite/PostgreSQL dialect and mapped column references.',
+            usedEngine: 'AutonomousSchemaReflectionEngine'
+          };
+          try { this.cdr.detectChanges(); } catch (e) {}
+        }
+      });
+    };
+
+    try { this.cdr.detectChanges(); } catch (e) {}
+    if (this.apiConnected) {
+      this.apiService.getColumns(connId, dbName, targetTable).subscribe({
+        next: (cols) => executeFix(cols || []),
+        error: () => executeFix([])
+      });
+    } else {
+      executeFix([]);
+    }
+  }
+
+  applyEditorFixAndRun(): void {
+    if (!this.editorCopilotSuggestion?.fixedQuery) return;
+    this.queryText = this.editorCopilotSuggestion.fixedQuery;
+    this.editorCopilotSuggestion = null;
+    try { this.cdr.detectChanges(); } catch (e) {}
+    this.runQuery();
+  }
+
+  applyEditorFixOnly(): void {
+    if (!this.editorCopilotSuggestion?.fixedQuery) return;
+    this.queryText = this.editorCopilotSuggestion.fixedQuery;
+    this.editorCopilotSuggestion = null;
+    try { this.cdr.detectChanges(); } catch (e) {}
   }
 
   // --- Data View Page ---

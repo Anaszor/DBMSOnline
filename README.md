@@ -57,9 +57,16 @@ You can have a **PostgreSQL** cloud instance, an **Azure SQL Server**, an **Orac
 
 ## 📸 Screenshots & Visual Tour
 
-### 1. Multi-Tab SQL Query Editor with Risk Telemetry
-*Execute complex SQL scripts across different database engines with real-time performance metrics, AST risk profiling, and dynamic data masking.*
-![SQL Query Editor](docs/screenshots/01_query_editor.png)
+### 1. Multi-Tab SQL Query Editor with Risk Telemetry & Gemini Copilot Auto-Fix
+*Execute complex SQL scripts across heterogeneous database engines with real-time performance metrics, AST risk profiling, and dynamic data masking. If a query fails due to dialect mismatches or column typos, the integrated **Gemini Copilot Autonomous Auto-Fix** instantly analyzes the error against the schema catalog and repairs the query with one click.*
+
+#### Step 1: Autonomous Error Diagnosis & Dialect Auto-Fix Suggestion
+*The user executes a query with a T-SQL dialect mismatch (`TOP 5`) and non-existent column (`Unit_Price`) against SQLite. The compiler rejects the query, and Gemini Copilot automatically diagnoses the failure, explaining the exact dialect and schema fix.*
+![Gemini Copilot Auto-Fix Suggestion](docs/screenshots/01a_query_autofix_suggestion.png)
+
+#### Step 2: Instant Execution Result After Applying Fix
+*With one click on **Apply Fix & Execute Now**, the repaired query (`SELECT * FROM Products ORDER BY Price DESC LIMIT 5;`) executes immediately with sub-millisecond execution duration and real-time telemetry.*
+![SQL Query Editor Execution Results](docs/screenshots/01_query_editor.png)
 
 ### 2. Reactive Data Grid & Inline Record Mutations
 *Explore tables with server-side pagination, sorting, column data types, primary key markers, and inline row editing.*

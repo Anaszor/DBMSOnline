@@ -242,6 +242,50 @@
                 <div style="padding: 1rem; background-color: #fef2f2; border: 1px solid #fecaca; color: #ef4444; border-radius: 8px; font-weight: 600; font-size: 0.9rem;">
                   ❌ Execution Error: {{ queryResult.errorMessage }}
                 </div>
+
+                <!-- Gemini AI Copilot Auto-Fix Banner -->
+                <div class="copilot-autofix-box" style="margin-top: 0.75rem; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 1rem;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <span style="font-size: 1.25rem;">✨</span>
+                      <div>
+                        <div style="font-weight: 700; color: #166534; font-size: 0.95rem;">Gemini AI Copilot Autonomous Auto-Fix</div>
+                        <div style="font-size: 0.78rem; color: #15803d;">Diagnose syntax errors, dialect mismatches, and column typos using schema-aware reflection.</div>
+                      </div>
+                    </div>
+                    <button class="btn btn-sm" (click)="autoFixEditorQuery()" [disabled]="isAutoFixingQuery" 
+                            style="background: #16a34a; color: white; border: none; padding: 0.45rem 0.9rem; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                      @if (isAutoFixingQuery) {
+                        <span>⏳ Analyzing Dialect & Schema...</span>
+                      } @else {
+                        <span>⚡ Auto-Fix Query</span>
+                      }
+                    </button>
+                  </div>
+
+                  @if (editorCopilotSuggestion) {
+                    <div style="margin-top: 0.85rem; padding: 0.85rem; background: #ffffff; border: 1px solid #86efac; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                      <div style="font-size: 0.85rem; color: #15803d; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;">
+                        <strong>💡 AI Diagnosis:</strong> 
+                        <span>{{ editorCopilotSuggestion.explanation }}</span>
+                      </div>
+                      <div style="font-size: 0.78rem; font-weight: 600; color: #64748b; margin-bottom: 0.3rem;">Suggested Query:</div>
+                      <div style="background: #0f172a; color: #38bdf8; padding: 0.75rem 1rem; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.9rem; margin-bottom: 0.75rem; border: 1px solid #334155; word-break: break-all;">
+                        {{ editorCopilotSuggestion.fixedQuery }}
+                      </div>
+                      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-sm" (click)="applyEditorFixAndRun()" 
+                                style="background: #2563eb; color: white; border: none; padding: 0.45rem 1rem; border-radius: 5px; cursor: pointer; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; gap: 0.3rem;">
+                          🚀 Apply Fix & Execute Now
+                        </button>
+                        <button class="btn btn-sm btn-secondary" (click)="applyEditorFixOnly()" 
+                                style="padding: 0.45rem 0.85rem; border-radius: 5px; cursor: pointer; font-size: 0.82rem;">
+                          📋 Copy to Editor Only
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
               } @else {
                 <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem; font-size: 0.85rem; background-color: #1e293b; color: #ffffff; padding: 0.5rem 0.75rem; border-radius: 6px;">
                   <span>Rows Affected / Returned: <strong>{{ queryResult.rowsAffected }}</strong></span>
