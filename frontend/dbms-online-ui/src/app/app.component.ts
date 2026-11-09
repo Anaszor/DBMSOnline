@@ -2340,50 +2340,73 @@ export class AppComponent implements OnInit {
     const dbName = this.selectedDatabase || this.selectedConnection?.databaseName || '';
 
     const fixWithCols = (cols: ColumnSchema[]) => {
-      const textCol = cols.find(c => c.dataType.toUpperCase().includes('VARCHAR') || c.dataType.toUpperCase().includes('TEXT') || c.dataType.toUpperCase().includes('CHAR')) || cols[0];
-      const numCol = cols.find(c => c.dataType.toUpperCase().includes('INT') || c.dataType.toUpperCase().includes('DECIMAL') || c.dataType.toUpperCase().includes('FLOAT') || c.dataType.toUpperCase().includes('NUMERIC')) || cols[1] || cols[0];
-
-      const catCol = textCol ? textCol.columnName : 'Category';
-      const measCol = numCol ? numCol.columnName : 'Value';
-
-      let agg: 'SUM' | 'AVG' | 'COUNT' | 'MIN' | 'MAX' = 'AVG';
-      if (numCol) {
-        const dt = numCol.dataType.toUpperCase();
-        if (dt.includes('DATE') || dt.includes('TIME') || dt.includes('CHAR') || dt.includes('TEXT')) {
-          agg = 'COUNT';
-        }
-      }
-
-      const dbType = Number(this.selectedConnection?.databaseType);
-      const isSqlServer = dbType === DatabaseType.SqlServer;
-      const q = isSqlServer ? (s: string) => `[${s}]` : (s: string) => `"${s}"`;
-
-      let querySql = '';
-      if (isSqlServer) {
-        querySql = `SELECT TOP 10 ${q(catCol)} AS Category, ${agg}(${q(measCol)}) AS Value FROM ${q(defaultTable)} WHERE ${q(measCol)} IS NOT NULL AND ${q(catCol)} IS NOT NULL GROUP BY ${q(catCol)} ORDER BY Value DESC;`;
-      } else {
-        querySql = `SELECT ${q(catCol)} AS Category, ${agg}(${q(measCol)}) AS Value FROM ${q(defaultTable)} WHERE ${q(measCol)} IS NOT NULL AND ${q(catCol)} IS NOT NULL GROUP BY ${q(catCol)} ORDER BY Value DESC LIMIT 10;`;
-      }
-
-      report.tableName = defaultTable;
-      report.categoryColumn = catCol;
-      report.measureColumn = measCol;
-      report.aggregation = agg;
-      report.queryText = querySql;
-
-      const reqPayload: CreateReportRequest = {
-        title: report.title,
-        description: report.description,
-        queryText: querySql,
-        widgetType: report.widgetType,
-        categoryColumn: catCol,
-        measureColumn: measCol
+      const payload = {
+        connectionId: connId,
+        databaseType: this.getDbTypeName(this.selectedConnection?.databaseType || 1),
+        databaseName: dbName,
+        tableName: defaultTable,
+        failedQuery: report.queryText,
+        errorMessage: (report as any).lastError || 'Query syntax error or column reference mismatch',
+        availableColumns: cols
       };
 
-      this.apiService.updateReport(report.id, reqPayload).subscribe({
-        next: (updated) => {
-          const target = updated ? this.parseReportMetadata(updated) : report;
-          this.refreshWidgetData(target);
+      // Call Gemini Copilot Auto-Fix Endpoint
+      this.apiService.copilotAutoFix(payload).subscribe({
+        next: (res) => {
+          const querySql = (res && res.fixedQuery) ? res.fixedQuery : report.queryText;
+          report.tableName = defaultTable;
+          report.queryText = querySql;
+
+          const reqPayload: CreateReportRequest = {
+            title: report.title,
+            description: report.description,
+            queryText: querySql,
+            widgetType: report.widgetType,
+            categoryColumn: report.categoryColumn,
+            measureColumn: report.measureColumn
+          };
+
+          this.apiService.updateReport(report.id, reqPayload).subscribe({
+            next: (updated) => {
+              const target = updated ? this.parseReportMetadata(updated) : report;
+              this.refreshWidgetData(target);
+            }
+          });
+        },
+        error: () => {
+          // Local fallback in case of network unavailability
+          const textCol = cols.find(c => c.dataType.toUpperCase().includes('VARCHAR') || c.dataType.toUpperCase().includes('TEXT') || c.dataType.toUpperCase().includes('CHAR')) || cols[0];
+          const numCol = cols.find(c => c.dataType.toUpperCase().includes('INT') || c.dataType.toUpperCase().includes('DECIMAL') || c.dataType.toUpperCase().includes('FLOAT') || c.dataType.toUpperCase().includes('NUMERIC')) || cols[1] || cols[0];
+          const catCol = textCol ? textCol.columnName : 'Category';
+          const measCol = numCol ? numCol.columnName : 'Value';
+          let agg: 'SUM' | 'AVG' | 'COUNT' | 'MIN' | 'MAX' = 'AVG';
+          const isSqlServer = Number(this.selectedConnection?.databaseType) === DatabaseType.SqlServer;
+          const q = isSqlServer ? (s: string) => `[${s}]` : (s: string) => `"${s}"`;
+          const querySql = isSqlServer
+            ? `SELECT TOP 10 ${q(catCol)} AS Category, ${agg}(${q(measCol)}) AS Value FROM ${q(defaultTable)} WHERE ${q(measCol)} IS NOT NULL GROUP BY ${q(catCol)} ORDER BY Value DESC;`
+            : `SELECT ${q(catCol)} AS Category, ${agg}(${q(measCol)}) AS Value FROM ${q(defaultTable)} WHERE ${q(measCol)} IS NOT NULL GROUP BY ${q(catCol)} ORDER BY Value DESC LIMIT 10;`;
+
+          report.tableName = defaultTable;
+          report.categoryColumn = catCol;
+          report.measureColumn = measCol;
+          report.aggregation = agg;
+          report.queryText = querySql;
+
+          const reqPayload: CreateReportRequest = {
+            title: report.title,
+            description: report.description,
+            queryText: querySql,
+            widgetType: report.widgetType,
+            categoryColumn: catCol,
+            measureColumn: measCol
+          };
+
+          this.apiService.updateReport(report.id, reqPayload).subscribe({
+            next: (updated) => {
+              const target = updated ? this.parseReportMetadata(updated) : report;
+              this.refreshWidgetData(target);
+            }
+          });
         }
       });
     };

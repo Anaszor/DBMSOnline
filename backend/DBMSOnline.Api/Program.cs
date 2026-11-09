@@ -60,6 +60,8 @@ builder.Services.AddScoped<IAuthAppService, AuthAppService>();
 builder.Services.AddScoped<IImportExportAppService, ImportExportAppService>();
 builder.Services.AddScoped<IReportingAppService, ReportingAppService>();
 builder.Services.AddScoped<IBackupRestoreAppService, BackupRestoreAppService>();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IGeminiCopilotService, GeminiCopilotService>();
 
 // 4b. Register SignalR Hubs
 builder.Services.AddSignalR();

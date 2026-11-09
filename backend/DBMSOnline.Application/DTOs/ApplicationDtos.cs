@@ -342,3 +342,45 @@ public class RestoreResultDto
     public int StatementsExecuted { get; set; }
     public string Message { get; set; } = string.Empty;
 }
+
+// --- Gemini AI Copilot DTOs ---
+public class CopilotFixRequestDto
+{
+    public Guid? ConnectionId { get; set; }
+    public string DatabaseType { get; set; } = string.Empty;
+    public string DatabaseName { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
+    public string FailedQuery { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = string.Empty;
+    public List<ColumnSchemaDto>? AvailableColumns { get; set; }
+    public string? ApiKey { get; set; }
+}
+
+public class CopilotFixResponseDto
+{
+    public bool Success { get; set; }
+    public string FixedQuery { get; set; } = string.Empty;
+    public string Explanation { get; set; } = string.Empty;
+    public string UsedEngine { get; set; } = "Google-Gemini-1.5-Flash";
+    public string? Error { get; set; }
+}
+
+public class CopilotGenerateRequestDto
+{
+    public Guid? ConnectionId { get; set; }
+    public string DatabaseType { get; set; } = string.Empty;
+    public string DatabaseName { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
+    public string NaturalLanguagePrompt { get; set; } = string.Empty;
+    public List<ColumnSchemaDto>? AvailableColumns { get; set; }
+    public string? ApiKey { get; set; }
+}
+
+public class CopilotGenerateResponseDto
+{
+    public bool Success { get; set; }
+    public string GeneratedQuery { get; set; } = string.Empty;
+    public string Explanation { get; set; } = string.Empty;
+    public string UsedEngine { get; set; } = "Google-Gemini-1.5-Flash";
+    public string? Error { get; set; }
+}

@@ -201,4 +201,12 @@ export class ApiService {
   getBackupHistory(connectionId: string): Observable<DatabaseBackup[]> {
     return this.http.get<DatabaseBackup[]>(`${this.baseUrl}/backuprestore/history/${connectionId}`);
   }
+
+  copilotAutoFix(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/copilot/autofix`, payload);
+  }
+
+  copilotGenerate(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/copilot/generate`, payload);
+  }
 }

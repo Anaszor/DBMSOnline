@@ -103,3 +103,9 @@ public interface IBackupRestoreAppService
     Task<DatabaseBackupDto?> GetBackupByIdAsync(Guid id);
     Task<(byte[] contentBytes, string fileName, string contentType)?> DownloadBackupAsync(Guid id);
 }
+
+public interface IGeminiCopilotService
+{
+    Task<CopilotFixResponseDto> AutoFixQueryAsync(CopilotFixRequestDto request);
+    Task<CopilotGenerateResponseDto> GenerateQueryAsync(CopilotGenerateRequestDto request);
+}
