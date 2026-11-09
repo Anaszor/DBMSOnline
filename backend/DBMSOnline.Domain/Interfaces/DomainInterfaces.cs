@@ -60,5 +60,6 @@ public interface IReportRepository
 public interface IDatabaseBackupRepository
 {
     Task<List<DatabaseBackup>> GetByConnectionIdAsync(Guid connectionId);
+    Task<DatabaseBackup?> GetByIdAsync(Guid id);
     Task AddAsync(DatabaseBackup backup);
 }

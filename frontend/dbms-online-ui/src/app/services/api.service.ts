@@ -134,8 +134,16 @@ export class ApiService {
     return this.http.post<ExportResult>(`${this.baseUrl}/importexport/export/table`, request);
   }
 
+  downloadExportTable(request: ExportTableRequest): Observable<Blob> {
+    return this.http.post(`${this.baseUrl}/importexport/export/table/download`, request, { responseType: 'blob' });
+  }
+
   exportDatabase(request: ExportDatabaseRequest): Observable<ExportResult> {
     return this.http.post<ExportResult>(`${this.baseUrl}/importexport/export/database`, request);
+  }
+
+  downloadExportDatabase(request: ExportDatabaseRequest): Observable<Blob> {
+    return this.http.post(`${this.baseUrl}/importexport/export/database/download`, request, { responseType: 'blob' });
   }
 
   importTable(request: ImportTableRequest): Observable<ImportResult> {
@@ -180,6 +188,10 @@ export class ApiService {
   // Database Backup & Restore API
   createBackup(request: CreateBackupRequest): Observable<BackupResult> {
     return this.http.post<BackupResult>(`${this.baseUrl}/backuprestore/create`, request);
+  }
+
+  downloadBackup(id: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/backuprestore/download/${id}`, { responseType: 'blob' });
   }
 
   restoreDatabase(request: RestoreDatabaseRequest): Observable<RestoreResult> {

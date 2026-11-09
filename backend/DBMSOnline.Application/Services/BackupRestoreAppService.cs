@@ -59,10 +59,12 @@ public class BackupRestoreAppService : IBackupRestoreAppService
 
         await _backupRepository.AddAsync(entity);
 
+        var dto = MapToDto(entity);
         return new BackupResultDto
         {
             Success = true,
-            Backup = MapToDto(entity),
+            Backup = dto,
+            BackupContent = entity.BackupContent,
             Message = $"Full database backup '{backupName}' created successfully."
         };
     }
@@ -93,6 +95,38 @@ public class BackupRestoreAppService : IBackupRestoreAppService
         return backups.Select(MapToDto).ToList();
     }
 
+    public async Task<DatabaseBackupDto?> GetBackupByIdAsync(Guid id)
+    {
+        var backup = await _backupRepository.GetByIdAsync(id);
+        return backup != null ? MapToDto(backup) : null;
+    }
+
+    public async Task<(byte[] contentBytes, string fileName, string contentType)?> DownloadBackupAsync(Guid id)
+    {
+        var backup = await _backupRepository.GetByIdAsync(id);
+        if (backup == null) return null;
+
+        byte[] bytes;
+        if (!string.IsNullOrEmpty(backup.BackupContent))
+        {
+            bytes = System.Text.Encoding.UTF8.GetBytes(backup.BackupContent);
+        }
+        else if (!string.IsNullOrEmpty(backup.FilePath) && System.IO.File.Exists(backup.FilePath))
+        {
+            bytes = await System.IO.File.ReadAllBytesAsync(backup.FilePath);
+        }
+        else
+        {
+            bytes = Array.Empty<byte>();
+        }
+
+        string fileName = !string.IsNullOrEmpty(backup.BackupName)
+            ? (backup.BackupName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase) ? backup.BackupName : $"{backup.BackupName}.sql")
+            : $"{backup.DatabaseName}_Backup.sql";
+
+        return (bytes, fileName, "application/sql");
+    }
+
     private static DatabaseBackupDto MapToDto(DatabaseBackup b) => new()
     {
         Id = b.Id,
@@ -102,6 +136,7 @@ public class BackupRestoreAppService : IBackupRestoreAppService
         DatabaseType = b.DatabaseType,
         FileSizeBytes = b.FileSizeBytes,
         FilePath = b.FilePath,
+        BackupContent = b.BackupContent,
         CreatedAt = b.CreatedAt
     };
 }

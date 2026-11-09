@@ -324,6 +324,7 @@ public class DatabaseBackupDto
     public DatabaseType DatabaseType { get; set; }
     public long FileSizeBytes { get; set; }
     public string FilePath { get; set; } = string.Empty;
+    public string BackupContent { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
 
@@ -331,6 +332,7 @@ public class BackupResultDto
 {
     public bool Success { get; set; }
     public DatabaseBackupDto? Backup { get; set; }
+    public string BackupContent { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }
 

@@ -300,6 +300,18 @@ public class OracleProvider : IDbProvider
         return result;
     }
 
+    private static string QuoteOracleTable(string tableName)
+    {
+        if (string.IsNullOrWhiteSpace(tableName)) return tableName;
+        string clean = tableName.Replace("\"", "").Trim();
+        if (clean.Contains('.'))
+        {
+            var parts = clean.Split('.', 2);
+            return $"\"{parts[0]}\".\"{parts[1]}\"";
+        }
+        return $"\"{clean}\"";
+    }
+
     public async Task<DataPageResultDto> GetTableDataAsync(SavedConnection connection, DataPageRequestDto request, string decryptedPassword, string decryptedConnectionString)
     {
         string cs = BuildConnectionString(connection, request.DatabaseName, decryptedPassword, decryptedConnectionString);
@@ -307,14 +319,15 @@ public class OracleProvider : IDbProvider
         await conn.OpenAsync();
 
         var cols = await GetColumnsAsync(connection, request.DatabaseName, request.TableName, decryptedPassword, decryptedConnectionString);
+        string quotedTable = QuoteOracleTable(request.TableName);
 
         using var countCmd = conn.CreateCommand();
-        countCmd.CommandText = $"SELECT COUNT(*) FROM \"{request.TableName}\"";
+        countCmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
         long totalRows = Convert.ToInt64(await countCmd.ExecuteScalarAsync());
 
         int offset = (request.Page - 1) * request.PageSize;
         using var dataCmd = conn.CreateCommand();
-        dataCmd.CommandText = $"SELECT * FROM \"{request.TableName}\" OFFSET {offset} ROWS FETCH NEXT {request.PageSize} ROWS ONLY";
+        dataCmd.CommandText = $"SELECT * FROM {quotedTable} OFFSET {offset} ROWS FETCH NEXT {request.PageSize} ROWS ONLY";
 
         var pageResult = new DataPageResultDto
         {
@@ -328,10 +341,9 @@ public class OracleProvider : IDbProvider
         while (await reader.ReadAsync())
         {
             var rowDict = new Dictionary<string, object?>();
-            foreach (var col in cols)
+            for (int i = 0; i < reader.FieldCount; i++)
             {
-                object val = reader[col.ColumnName];
-                rowDict[col.ColumnName] = val == DBNull.Value ? null : val;
+                rowDict[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);
             }
             pageResult.Rows.Add(rowDict);
         }

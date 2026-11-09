@@ -37,4 +37,13 @@ public class BackupRestoreController : ControllerBase
         var result = await _backupRestoreAppService.GetBackupHistoryAsync(connectionId);
         return Ok(result);
     }
+
+    [HttpGet("download/{id}")]
+    public async Task<IActionResult> DownloadBackup(Guid id)
+    {
+        var result = await _backupRestoreAppService.DownloadBackupAsync(id);
+        if (result == null) return NotFound("Backup file record not found.");
+
+        return File(result.Value.contentBytes, result.Value.contentType, result.Value.fileName);
+    }
 }

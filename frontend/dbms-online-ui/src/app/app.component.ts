@@ -1,4 +1,4 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from './services/api.service';
@@ -58,6 +58,118 @@ export class AppComponent implements OnInit {
   showConnectionModal = false;
   connectionTestStatus: { success?: boolean; message?: string } | null = null;
   apiConnected = false;
+
+  // Progress Timeline State
+  isProcessing = false;
+  processTitle = '';
+  processSubtitle = '';
+  processProgress = 0;
+  processStep = '';
+  processTimeline: { label: string; status: 'completed' | 'active' | 'pending' }[] = [];
+
+  // Custom Popup Notification State
+  notificationModal: {
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'danger' | 'warning' | 'info';
+    icon: string;
+  } | null = null;
+
+  showPopupNotification(title: string, message: string, type: 'success' | 'danger' | 'warning' | 'info' = 'success'): void {
+    let icon = 'feather icon-check-circle';
+    if (type === 'danger') icon = 'feather icon-x-circle';
+    else if (type === 'warning') icon = 'feather icon-alert-triangle';
+    else if (type === 'info') icon = 'feather icon-info';
+
+    this.notificationModal = {
+      show: true,
+      title: title || 'Notification',
+      message: message || '',
+      type,
+      icon
+    };
+    try { this.cdr.detectChanges(); } catch (e) {}
+  }
+
+  closePopupNotification(): void {
+    if (this.notificationModal) {
+      this.notificationModal.show = false;
+    }
+    try { this.cdr.detectChanges(); } catch (e) {}
+  }
+
+  startProgress(title: string, subtitle: string, steps: string[]): void {
+    this.isProcessing = true;
+    this.processTitle = title || 'Processing Task...';
+    this.processSubtitle = subtitle || 'Please wait while the operation completes.';
+    this.processProgress = 12;
+
+    const validSteps = (steps && steps.length > 0)
+      ? steps
+      : ['Initializing task parameters', 'Executing database query', 'Finalizing output payload'];
+
+    this.processStep = validSteps[0];
+    this.processTimeline = validSteps.map((s, idx) => ({
+      label: s,
+      status: idx === 0 ? 'active' : 'pending'
+    }));
+
+    try { this.cdr.detectChanges(); } catch (e) {}
+
+    const interval = setInterval(() => {
+      if (!this.isProcessing) {
+        clearInterval(interval);
+        return;
+      }
+      if (this.processProgress < 98) {
+        if (this.processProgress < 75) {
+          this.processProgress += Math.floor(Math.random() * 6) + 4;
+        } else if (this.processProgress < 90) {
+          this.processProgress += Math.floor(Math.random() * 3) + 1;
+        } else {
+          this.processProgress += 1;
+        }
+        if (this.processProgress > 98) this.processProgress = 98;
+
+        const totalSteps = this.processTimeline.length;
+        if (totalSteps > 0) {
+          const currentIdx = Math.min(
+            Math.floor((this.processProgress / 100) * totalSteps),
+            totalSteps - 1
+          );
+          this.processTimeline.forEach((t, i) => {
+            if (i < currentIdx) t.status = 'completed';
+            else if (i === currentIdx) t.status = 'active';
+            else t.status = 'pending';
+          });
+          if (this.processTimeline[currentIdx]) {
+            this.processStep = this.processTimeline[currentIdx].label;
+          }
+        }
+        try { this.cdr.detectChanges(); } catch (e) {}
+      }
+    }, 180);
+  }
+
+  finishProgress(successMessage?: string): void {
+    this.processProgress = 100;
+    this.processTimeline.forEach(t => t.status = 'completed');
+    try { this.cdr.detectChanges(); } catch (e) {}
+    setTimeout(() => {
+      this.isProcessing = false;
+      try { this.cdr.detectChanges(); } catch (e) {}
+      if (successMessage) {
+        this.showPopupNotification('Success', successMessage, 'success');
+      }
+    }, 350);
+  }
+
+  failProgress(errorMessage: string): void {
+    this.isProcessing = false;
+    try { this.cdr.detectChanges(); } catch (e) {}
+    this.showPopupNotification('Operation Failed', errorMessage, 'danger');
+  }
 
   // Context Menu State
   contextMenuVisible = false;
@@ -453,7 +565,7 @@ export class AppComponent implements OnInit {
     'SET', 'VALUES', 'ASC', 'DESC'
   ];
 
-  constructor(private apiService: ApiService) {}
+  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadTabsFromStorage();
@@ -1689,6 +1801,11 @@ export class AppComponent implements OnInit {
   downloadFile(content: string, fileName: string, contentType: string): void {
     if (!content) return;
     const blob = new Blob([content], { type: contentType || 'application/octet-stream' });
+    this.downloadBlobFile(blob, fileName);
+  }
+
+  downloadBlobFile(blob: Blob, fileName: string): void {
+    if (!blob) return;
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1716,34 +1833,79 @@ export class AppComponent implements OnInit {
   }
 
   downloadBackupFromHistory(b: DatabaseBackup): void {
-    if (b.backupContent) {
+    if (b.id) {
+      this.apiService.downloadBackup(b.id).subscribe({
+        next: (blob) => {
+          this.downloadBlobFile(blob, `${b.backupName || b.databaseName || 'Backup'}.sql`);
+          this.showPopupNotification('Download Complete', `Backup '${b.backupName || 'snapshot'}' downloaded successfully!`, 'success');
+        },
+        error: (err) => {
+          if (b.backupContent) {
+            this.downloadFile(b.backupContent, `${b.backupName || 'Backup'}.sql`, 'application/sql');
+            this.showPopupNotification('Download Complete', `Backup '${b.backupName || 'snapshot'}' downloaded!`, 'success');
+          } else {
+            this.showPopupNotification('Download Error', 'Failed to download backup file: ' + (err.error?.detail || err.message), 'danger');
+          }
+        }
+      });
+    } else if (b.backupContent) {
       this.downloadFile(b.backupContent, `${b.backupName || 'Backup'}.sql`, 'application/sql');
+      this.showPopupNotification('Download Complete', `Backup '${b.backupName || 'snapshot'}' downloaded!`, 'success');
     } else {
-      alert('Backup snapshot content is unavailable.');
+      this.showPopupNotification('Unavailable', 'Backup snapshot content is unavailable.', 'warning');
     }
   }
 
   executeBackup(): void {
     const connId = this.selectedConnection?.id || (this.connections.length > 0 ? this.connections[0].id : null);
     if (!connId) {
-      alert('Please select an active database connection profile first.');
+      this.showPopupNotification('Connection Required', 'Please select an active database connection profile first.', 'warning');
       return;
     }
     const dbName = this.selectedDatabase || this.selectedConnection?.databaseName || 'main.db';
+    
+    this.showBackupModal = false;
+    this.startProgress(
+      `Creating Database Backup`,
+      `Generating snapshot dump for '${dbName}'`,
+      [
+        'Initializing database snapshot',
+        'Extracting table definitions & row buffers',
+        'Creating backup archive record',
+        'Preparing download file stream'
+      ]
+    );
+
     this.apiService.createBackup({
       connectionId: connId,
       databaseName: dbName,
       backupName: this.backupName
     }).subscribe({
       next: (res) => {
-        alert('✅ ' + res.message);
-        if (res.backupContent) {
-          this.downloadFile(res.backupContent, `${this.backupName || 'snapshot'}.sql`, 'application/sql');
+        if (res.backup?.id) {
+          this.apiService.downloadBackup(res.backup.id).subscribe({
+            next: (blob) => {
+              this.downloadBlobFile(blob, `${this.backupName || dbName || 'snapshot'}.sql`);
+              this.finishProgress(res.message || 'Database backup created and downloaded successfully!');
+              if (this.selectedConnection) this.loadBackupHistory();
+            },
+            error: () => {
+              if (res.backupContent || res.backup?.backupContent) {
+                this.downloadFile(res.backupContent || res.backup?.backupContent || '', `${this.backupName || 'snapshot'}.sql`, 'application/sql');
+              }
+              this.finishProgress(res.message || 'Database backup created successfully!');
+              if (this.selectedConnection) this.loadBackupHistory();
+            }
+          });
+        } else {
+          if (res.backupContent || res.backup?.backupContent) {
+            this.downloadFile(res.backupContent || res.backup?.backupContent || '', `${this.backupName || 'snapshot'}.sql`, 'application/sql');
+          }
+          this.finishProgress(res.message || 'Database backup created successfully!');
+          if (this.selectedConnection) this.loadBackupHistory();
         }
-        this.showBackupModal = false;
-        if (this.selectedConnection) this.loadBackupHistory();
       },
-      error: (err) => alert('Backup failed: ' + (err.error?.detail || err.message))
+      error: (err) => this.failProgress('Backup failed: ' + (err.error?.detail || err.message))
     });
   }
 
@@ -1759,21 +1921,33 @@ export class AppComponent implements OnInit {
   executeRestore(): void {
     const connId = this.selectedConnection?.id || (this.connections.length > 0 ? this.connections[0].id : null);
     if (!connId || !this.restoreFileContent.trim()) {
-      alert('Please select a valid connection and select or paste backup content.');
+      this.showPopupNotification('Content Required', 'Please select a valid connection and select or paste backup content.', 'warning');
       return;
     }
     const dbName = this.selectedDatabase || this.selectedConnection?.databaseName || 'main.db';
+
+    this.showRestoreModal = false;
+    this.startProgress(
+      `Restoring Database`,
+      `Executing SQL script dump against database '${dbName}'`,
+      [
+        'Parsing SQL script statements',
+        'Establishing transactional execution context',
+        'Applying DDL & data insert batches',
+        'Validating database restore status'
+      ]
+    );
+
     this.apiService.restoreDatabase({
       connectionId: connId,
       targetDatabaseName: dbName,
       backupContentOrPath: this.restoreFileContent
     }).subscribe({
       next: (res) => {
-        alert(`✅ Restore complete! ${res.statementsExecuted} SQL statements executed against '${dbName}'.`);
-        this.showRestoreModal = false;
+        this.finishProgress(`Restore complete! Executed ${res.statementsExecuted} SQL statements against '${dbName}'.`);
         this.loadTables();
       },
-      error: (err) => alert('Database restore failed: ' + (err.error?.detail || err.message))
+      error: (err) => this.failProgress('Database restore failed: ' + (err.error?.detail || err.message))
     });
   }
 
@@ -1810,37 +1984,85 @@ export class AppComponent implements OnInit {
   executeExport(): void {
     const connId = this.selectedConnection?.id || (this.connections.length > 0 ? this.connections[0].id : null);
     if (!connId) {
-      alert('Please select an active connection profile.');
+      this.showPopupNotification('Connection Required', 'Please select an active connection profile.', 'warning');
       return;
     }
     const dbName = this.selectedDatabase || this.selectedConnection?.databaseName || 'main.db';
+    const format = this.exportFormat || 'sql';
+    const ext = format.toLowerCase();
+
+    this.showExportModal = false;
 
     if (this.exportScope === 'table') {
-      this.apiService.exportTable({
+      const fileName = `${this.exportTargetTable}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const req: ExportTableRequest = {
         connectionId: connId,
         databaseName: dbName,
         tableName: this.exportTargetTable,
-        format: this.exportFormat || 'sql',
+        format: format,
         includeData: true,
         includeSchema: true
-      }).subscribe({
-        next: (res) => {
-          this.downloadFile(res.content, res.fileName, res.contentType);
-          this.showExportModal = false;
+      };
+
+      this.startProgress(
+        `Exporting Table: ${this.exportTargetTable}`,
+        `Generating ${format.toUpperCase()} export for table '${this.exportTargetTable}'`,
+        [
+          'Inspecting table schema & column constraints',
+          'Fetching row dataset buffers',
+          'Formatting payload & generating file',
+          'Initiating binary download stream'
+        ]
+      );
+
+      this.apiService.downloadExportTable(req).subscribe({
+        next: (blob) => {
+          this.downloadBlobFile(blob, fileName);
+          this.finishProgress(`Table '${this.exportTargetTable}' exported and downloaded successfully!`);
         },
-        error: (err) => alert('Export failed: ' + (err.error?.detail || err.message))
+        error: () => {
+          this.apiService.exportTable(req).subscribe({
+            next: (res) => {
+              this.downloadFile(res.content, res.fileName, res.contentType);
+              this.finishProgress(`Table '${this.exportTargetTable}' exported successfully!`);
+            },
+            error: (err) => this.failProgress('Export failed: ' + (err.error?.detail || err.message))
+          });
+        }
       });
     } else {
-      this.apiService.exportDatabase({
+      const fileName = `${dbName}_FullBackup_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      const req: ExportDatabaseRequest = {
         connectionId: connId,
         databaseName: dbName,
-        format: this.exportFormat || 'sql'
-      }).subscribe({
-        next: (res) => {
-          this.downloadFile(res.content, res.fileName, res.contentType);
-          this.showExportModal = false;
+        format: format
+      };
+
+      this.startProgress(
+        `Exporting Full Database: ${dbName}`,
+        `Generating complete ${format.toUpperCase()} dump for all tables`,
+        [
+          'Enumerating database tables & dependencies',
+          'Exporting schema DDL scripts',
+          'Streaming table data records',
+          'Finalizing export package download'
+        ]
+      );
+
+      this.apiService.downloadExportDatabase(req).subscribe({
+        next: (blob) => {
+          this.downloadBlobFile(blob, fileName);
+          this.finishProgress(`Database '${dbName}' exported and downloaded successfully!`);
         },
-        error: (err) => alert('Database export failed: ' + (err.error?.detail || err.message))
+        error: () => {
+          this.apiService.exportDatabase(req).subscribe({
+            next: (res) => {
+              this.downloadFile(res.content, res.fileName, res.contentType);
+              this.finishProgress(`Database '${dbName}' exported successfully!`);
+            },
+            error: (err) => this.failProgress('Database export failed: ' + (err.error?.detail || err.message))
+          });
+        }
       });
     }
   }
@@ -1869,10 +2091,22 @@ export class AppComponent implements OnInit {
   executeImport(): void {
     const connId = this.selectedConnection?.id || (this.connections.length > 0 ? this.connections[0].id : null);
     if (!connId || !this.importFileContent.trim()) {
-      alert('Please select a connection profile and select or paste import file content.');
+      this.showPopupNotification('Input Required', 'Please select a connection profile and select or paste import file content.', 'warning');
       return;
     }
     const dbName = this.selectedDatabase || this.selectedConnection?.databaseName || 'main.db';
+
+    this.showImportModal = false;
+    this.startProgress(
+      `Importing Data`,
+      `Parsing and importing file data into database '${dbName}'`,
+      [
+        'Reading import file payload',
+        'Validating schema & target table mapping',
+        'Executing record insertion transactions',
+        'Finalizing data import'
+      ]
+    );
 
     if (this.importFormat === 'sql') {
       this.apiService.importScript({
@@ -1881,11 +2115,10 @@ export class AppComponent implements OnInit {
         sqlScript: this.importFileContent
       }).subscribe({
         next: (res) => {
-          alert(`✅ Import complete! ${res.statementsExecuted} SQL statements executed.`);
-          this.showImportModal = false;
+          this.finishProgress(`Import complete! Executed ${res.statementsExecuted} SQL statements.`);
           this.loadTables();
         },
-        error: (err) => alert('Script import failed: ' + (err.error?.detail || err.message))
+        error: (err) => this.failProgress('Script import failed: ' + (err.error?.detail || err.message))
       });
     } else {
       this.apiService.importTable({
@@ -1897,11 +2130,10 @@ export class AppComponent implements OnInit {
         createTableIfNotExists: true
       }).subscribe({
         next: (res) => {
-          alert(`✅ Import complete! ${res.rowsImported} rows inserted into '${this.importTargetTable}'.`);
-          this.showImportModal = false;
+          this.finishProgress(`Import complete! Inserted ${res.rowsImported} rows into '${this.importTargetTable}'.`);
           this.selectTable(this.importTargetTable);
         },
-        error: (err) => alert('Table import failed: ' + (err.error?.detail || err.message))
+        error: (err) => this.failProgress('Table import failed: ' + (err.error?.detail || err.message))
       });
     }
   }

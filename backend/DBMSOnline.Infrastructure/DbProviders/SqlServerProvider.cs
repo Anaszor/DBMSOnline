@@ -99,12 +99,25 @@ public class SqlServerProvider : IDbProvider
         return tables;
     }
 
+    private static (string schemaName, string rawTable) SplitSchemaAndTable(string tableName, string defaultSchema = "dbo")
+    {
+        if (string.IsNullOrWhiteSpace(tableName)) return (defaultSchema, string.Empty);
+        string clean = tableName.Replace("[", "").Replace("]", "").Trim();
+        if (clean.Contains('.'))
+        {
+            var parts = clean.Split('.', 2);
+            return (parts[0], parts[1]);
+        }
+        return (defaultSchema, clean);
+    }
+
     public async Task<List<ColumnSchemaDto>> GetColumnsAsync(SavedConnection connection, string databaseName, string tableName, string decryptedPassword, string decryptedConnectionString)
     {
         string cs = BuildConnectionString(connection, databaseName, decryptedPassword, decryptedConnectionString);
         using var conn = new SqlConnection(cs);
         await conn.OpenAsync();
 
+        var (schemaName, rawTable) = SplitSchemaAndTable(tableName);
         var columns = new List<ColumnSchemaDto>();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
@@ -132,9 +145,10 @@ public class SqlServerProvider : IDbProvider
                   ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
                 WHERE tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
             ) fk ON c.TABLE_NAME = fk.TABLE_NAME AND c.COLUMN_NAME = fk.COLUMN_NAME AND c.TABLE_SCHEMA = fk.TABLE_SCHEMA
-            WHERE c.TABLE_NAME = @tableName
+            WHERE c.TABLE_NAME = @tableName AND (c.TABLE_SCHEMA = @schemaName OR @schemaName IS NULL OR @schemaName = '')
             ORDER BY c.ORDINAL_POSITION;";
-        cmd.Parameters.AddWithValue("@tableName", tableName.Replace("[", "").Replace("]", ""));
+        cmd.Parameters.AddWithValue("@tableName", rawTable);
+        cmd.Parameters.AddWithValue("@schemaName", schemaName);
 
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -229,19 +243,22 @@ public class SqlServerProvider : IDbProvider
 
         var columns = await GetColumnsAsync(connection, request.DatabaseName, request.TableName, decryptedPassword, decryptedConnectionString);
 
+        var (schemaName, rawTable) = SplitSchemaAndTable(request.TableName);
+        string quotedTable = $"[{schemaName}].[{rawTable}]";
+
         using var countCmd = conn.CreateCommand();
         countCmd.CommandTimeout = 300;
-        countCmd.CommandText = $"SELECT COUNT(*) FROM [{request.TableName}];";
+        countCmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable};";
         long totalRows = Convert.ToInt64(await countCmd.ExecuteScalarAsync());
 
         int offset = (request.Page - 1) * request.PageSize;
         string orderClause = !string.IsNullOrEmpty(request.SortColumn)
-            ? $"ORDER BY [{request.SortColumn}] {(request.SortAscending ? "ASC" : "DESC")}"
+            ? $"ORDER BY [{request.SortColumn.Replace("[", "").Replace("]", "")}] {(request.SortAscending ? "ASC" : "DESC")}"
             : "ORDER BY (SELECT NULL)";
 
         using var pageCmd = conn.CreateCommand();
         pageCmd.CommandTimeout = 300;
-        pageCmd.CommandText = $"SELECT * FROM [{request.TableName}] {orderClause} OFFSET {offset} ROWS FETCH NEXT {request.PageSize} ROWS ONLY;";
+        pageCmd.CommandText = $"SELECT * FROM {quotedTable} {orderClause} OFFSET {offset} ROWS FETCH NEXT {request.PageSize} ROWS ONLY;";
 
         var rows = new List<Dictionary<string, object?>>();
         using var reader = await pageCmd.ExecuteReaderAsync();

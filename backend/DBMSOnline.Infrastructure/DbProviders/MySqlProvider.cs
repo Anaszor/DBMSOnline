@@ -177,6 +177,18 @@ public class MySqlProvider : IDbProvider
         return result;
     }
 
+    private static string QuoteMySqlTable(string tableName)
+    {
+        if (string.IsNullOrWhiteSpace(tableName)) return tableName;
+        string clean = tableName.Replace("`", "").Trim();
+        if (clean.Contains('.'))
+        {
+            var parts = clean.Split('.', 2);
+            return $"`{parts[0]}`.`{parts[1]}`";
+        }
+        return $"`{clean}`";
+    }
+
     public async Task<DataPageResultDto> GetTableDataAsync(SavedConnection connection, DataPageRequestDto request, string decryptedPassword, string decryptedConnectionString)
     {
         string cs = BuildConnectionString(connection, request.DatabaseName, decryptedPassword, decryptedConnectionString);
@@ -185,17 +197,19 @@ public class MySqlProvider : IDbProvider
 
         var columns = await GetColumnsAsync(connection, request.DatabaseName, request.TableName, decryptedPassword, decryptedConnectionString);
 
+        string quotedTable = QuoteMySqlTable(request.TableName);
+
         using var countCmd = conn.CreateCommand();
-        countCmd.CommandText = $"SELECT COUNT(*) FROM `{request.TableName}`;";
+        countCmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable};";
         long totalRows = Convert.ToInt64(await countCmd.ExecuteScalarAsync());
 
         int offset = (request.Page - 1) * request.PageSize;
         string orderClause = !string.IsNullOrEmpty(request.SortColumn)
-            ? $"ORDER BY `{request.SortColumn}` {(request.SortAscending ? "ASC" : "DESC")}"
+            ? $"ORDER BY `{request.SortColumn.Replace("`", "")}` {(request.SortAscending ? "ASC" : "DESC")}"
             : "";
 
         using var pageCmd = conn.CreateCommand();
-        pageCmd.CommandText = $"SELECT * FROM `{request.TableName}` {orderClause} LIMIT {request.PageSize} OFFSET {offset};";
+        pageCmd.CommandText = $"SELECT * FROM {quotedTable} {orderClause} LIMIT {request.PageSize} OFFSET {offset};";
 
         var rows = new List<Dictionary<string, object?>>();
         using var reader = await pageCmd.ExecuteReaderAsync();

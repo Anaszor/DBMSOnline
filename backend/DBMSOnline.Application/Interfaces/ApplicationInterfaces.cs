@@ -100,4 +100,6 @@ public interface IBackupRestoreAppService
     Task<BackupResultDto> CreateBackupAsync(CreateBackupRequestDto request);
     Task<RestoreResultDto> RestoreDatabaseAsync(RestoreDatabaseRequestDto request);
     Task<List<DatabaseBackupDto>> GetBackupHistoryAsync(Guid connectionId);
+    Task<DatabaseBackupDto?> GetBackupByIdAsync(Guid id);
+    Task<(byte[] contentBytes, string fileName, string contentType)?> DownloadBackupAsync(Guid id);
 }

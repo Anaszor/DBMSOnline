@@ -85,6 +85,11 @@ public class DatabaseBackupRepository : IDatabaseBackupRepository
             .ToListAsync();
     }
 
+    public async Task<DatabaseBackup?> GetByIdAsync(Guid id)
+    {
+        return await _context.DatabaseBackups.FindAsync(id);
+    }
+
     public async Task AddAsync(DatabaseBackup backup)
     {
         await _context.DatabaseBackups.AddAsync(backup);

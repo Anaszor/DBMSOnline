@@ -71,7 +71,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<ConnectionRequestDtoValidat
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.MaxDepth = 128;
+        options.JsonSerializerOptions.MaxDepth = 256;
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
@@ -80,11 +80,14 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
     options.ValueLengthLimit = int.MaxValue;
     options.MultipartBodyLengthLimit = long.MaxValue;
     options.MemoryBufferThreshold = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
 });
 
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.Limits.MaxRequestBodySize = null; // Unlimited request body size for large DB dumps
+    serverOptions.Limits.MaxResponseBufferSize = null; // Unlimited response buffer size to fix download buffer limits
+    serverOptions.Limits.MinResponseDataRate = null; // Disable minimum data rate limit for large DB exports/downloads
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
