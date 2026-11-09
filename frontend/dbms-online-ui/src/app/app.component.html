@@ -1016,15 +1016,15 @@
                               <input #qInput style="border: none; outline: none; width: 100%; font-size: 0.76rem; color: #201f1e; font-weight: 600;"
                                      [value]="getQAndAInput(rep.id)"
                                      (keyup.enter)="executeQAndA(rep, qInput.value, $event)"
-                                     placeholder="Ask a question about your data (e.g. 'average date of FileLogTable')...">
+                                     placeholder="Ask a question about your data (e.g. 'average unit price of Products')...">
                               <button style="border: none; background: #008272; color: #ffffff; font-size: 0.7rem; font-weight: 700; border-radius: 3px; padding: 3px 8px; cursor: pointer; white-space: nowrap;"
                                       (click)="executeQAndA(rep, qInput.value, $event)">
                                 ⚡ Generate
                               </button>
                             </div>
                             <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                              <span style="background: #e6f4f1; font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; cursor: pointer; color: #008272; font-weight: 600;" (click)="qInput.value = 'average date of FileLogTable'; executeQAndA(rep, 'average date of FileLogTable', $event)">average date of FileLogTable</span>
-                              <span style="background: #f3f2f1; font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; cursor: pointer; color: #008272;" (click)="qInput.value = 'count by status in FileLogTable'; executeQAndA(rep, 'count by status in FileLogTable', $event)">count by status in FileLogTable</span>
+                              <span style="background: #e6f4f1; font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; cursor: pointer; color: #008272; font-weight: 600;" (click)="qInput.value = 'average unit price of Products'; executeQAndA(rep, 'average unit price of Products', $event)">average unit price of Products</span>
+                              <span style="background: #f3f2f1; font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; cursor: pointer; color: #008272;" (click)="qInput.value = 'count by category in Products'; executeQAndA(rep, 'count by category in Products', $event)">count by category in Products</span>
                               <span style="background: #f3f2f1; font-size: 0.68rem; padding: 2px 6px; border-radius: 10px; cursor: pointer; color: #008272;" (click)="qInput.value = 'average duration by action in AuditLogs'; executeQAndA(rep, 'average duration by action in AuditLogs', $event)">average duration by action in AuditLogs</span>
                             </div>
 

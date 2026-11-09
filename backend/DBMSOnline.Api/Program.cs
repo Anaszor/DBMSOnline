@@ -135,13 +135,19 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     dbContext.Database.EnsureCreated();
 
-    // Create sample demo SQLite database file if not exists
+    // Create rich enterprise sample demo SQLite database file if not exists
     string demoDbPath = Path.Combine(AppContext.BaseDirectory, "demo_dbms.db");
     using (var conn = new SqliteConnection($"Data Source={demoDbPath}"))
     {
         conn.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = @"
+            CREATE TABLE IF NOT EXISTS Departments (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Location TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS Employees (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 FullName TEXT NOT NULL,
@@ -152,21 +158,77 @@ using (var scope = app.Services.CreateScope())
                 Password TEXT
             );
 
-            CREATE TABLE IF NOT EXISTS Departments (
+            CREATE TABLE IF NOT EXISTS Categories (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
-                Location TEXT
+                Description TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS Products (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Category TEXT NOT NULL,
+                Price REAL NOT NULL,
+                StockQuantity INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS Orders (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                CustomerName TEXT NOT NULL,
+                TotalAmount REAL NOT NULL,
+                Status TEXT NOT NULL,
+                OrderDate TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS Customers (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Company TEXT,
+                City TEXT,
+                Country TEXT
             );
 
             INSERT OR IGNORE INTO Departments (Id, Name, Location) VALUES 
-            (1, 'Engineering', 'Building A'),
-            (2, 'Finance', 'Building B'),
-            (3, 'Operations', 'Building C');
+            (1, 'Engineering', 'Building A - Silicon Valley'),
+            (2, 'Finance', 'Building B - New York'),
+            (3, 'Operations', 'Building C - Chicago'),
+            (4, 'Marketing', 'Building D - London'),
+            (5, 'Sales', 'Building E - Tokyo');
 
             INSERT OR IGNORE INTO Employees (Id, FullName, Position, Department, Salary, Email, Password) VALUES 
-            (1, 'Alex Morgan', 'Senior Lead Engineer', 'Engineering', 125000, 'alex.morgan@company.com', 'Pass123!'),
-            (2, 'Samantha Reed', 'Financial Analyst', 'Finance', 95000, 'samantha.r@company.com', 'SecretKey456'),
-            (3, 'David Chen', 'DevOps Specialist', 'Engineering', 110000, 'david.c@company.com', 'EncryptedPass789');
+            (1, 'Alex Morgan', 'Principal Lead Engineer', 'Engineering', 145000, 'alex.m@cloudenterprise.io', 'Pass123!'),
+            (2, 'Samantha Reed', 'Senior Financial Analyst', 'Finance', 98000, 'samantha.r@cloudenterprise.io', 'SecretKey456'),
+            (3, 'David Chen', 'Cloud Architect', 'Engineering', 135000, 'david.c@cloudenterprise.io', 'EncryptedPass789'),
+            (4, 'Elena Rostova', 'VP of Marketing', 'Marketing', 120000, 'elena.r@cloudenterprise.io', 'MktPass999'),
+            (5, 'Marcus Vance', 'Enterprise Sales Director', 'Sales', 115000, 'marcus.v@cloudenterprise.io', 'SalesPass2026');
+
+            INSERT OR IGNORE INTO Categories (Id, Name, Description) VALUES
+            (1, 'Cloud Compute', 'Server instances and GPU clusters'),
+            (2, 'Storage & DB', 'Managed object storage and relational DBs'),
+            (3, 'Security & IAM', 'Zero trust enterprise access tools'),
+            (4, 'Networking', 'VPC, CDN and edge routing services');
+
+            INSERT OR IGNORE INTO Products (Id, Name, Category, Price, StockQuantity) VALUES
+            (1, 'Titan Compute Node 64vCPU', 'Cloud Compute', 420.00, 150),
+            (2, 'HyperEdge AI Accelerator', 'Cloud Compute', 890.00, 75),
+            (3, 'NVMe Ultra High-IOPS Tier', 'Storage & DB', 120.00, 500),
+            (4, 'Quantum-Safe Shield Proxy', 'Security & IAM', 250.00, 320),
+            (5, 'Global Anycast Edge CDN', 'Networking', 95.00, 800),
+            (6, 'Enterprise PostgreSQL Cluster', 'Storage & DB', 310.00, 210);
+
+            INSERT OR IGNORE INTO Orders (Id, CustomerName, TotalAmount, Status, OrderDate) VALUES
+            (1, 'Acme Global Corp', 4200.00, 'Completed', '2026-10-15'),
+            (2, 'CyberNet Solutions', 1890.00, 'Completed', '2026-10-18'),
+            (3, 'Apex Financial Group', 5600.00, 'Processing', '2026-10-22'),
+            (4, 'Nova Logistics Ltd', 1250.00, 'Shipped', '2026-10-24'),
+            (5, 'Starlight Media Tech', 3100.00, 'Completed', '2026-11-01');
+
+            INSERT OR IGNORE INTO Customers (Id, Name, Company, City, Country) VALUES
+            (1, 'Sarah Jenkins', 'Acme Global Corp', 'San Francisco', 'United States'),
+            (2, 'Tariq Al-Mansoor', 'CyberNet Solutions', 'Dubai', 'UAE'),
+            (3, 'Oliver Schmidt', 'Apex Financial Group', 'Frankfurt', 'Germany'),
+            (4, 'Mei-Ling Zhou', 'Nova Logistics Ltd', 'Singapore', 'Singapore'),
+            (5, 'Liam O''Connor', 'Starlight Media Tech', 'Dublin', 'Ireland');
         ";
         cmd.ExecuteNonQuery();
     }
@@ -176,93 +238,93 @@ using (var scope = app.Services.CreateScope())
     {
         var enc = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
 
-        // 1. Render PostgreSQL Cloud DB
+        // 1. AWS RDS PostgreSQL Cloud
         dbContext.SavedConnections.Add(new SavedConnection
         {
             Id = Guid.NewGuid(),
             TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             CreatedByUserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Render PostgreSQL Cloud DB",
+            Name = "AWS RDS PostgreSQL Cloud",
             DatabaseType = DatabaseType.PostgreSql,
-            AuthType = AuthType.ConnectionString,
-            Host = "dpg-da2lh21t0dsc73amd580-a.oregon-postgres.render.com",
+            AuthType = AuthType.BasicPassword,
+            Host = "rds-postgres-prod.us-east-1.amazonaws.com",
             Port = 5432,
-            DatabaseName = "vva_postgres",
-            Username = "vva_postgres_user",
-            EncryptedConnectionString = enc.Encrypt("Host=dpg-da2lh21t0dsc73amd580-a.oregon-postgres.render.com;Port=5432;Database=vva_postgres;Username=vva_postgres_user;Password=HnPXLeEhkUQ3wwyK8iBKn1YwrNI2UVWS;SSL Mode=Require;Trust Server Certificate=true;"),
+            DatabaseName = "retail_production_db",
+            Username = "db_admin",
+            EncryptedPassword = enc.Encrypt("DemoCloudSecret2026!"),
             IsReadOnly = false,
             EnforceSsl = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
 
-        // 2. Local SQL Server (MSSQL Express)
+        // 2. Azure SQL Server (MSSQL Enterprise)
         dbContext.SavedConnections.Add(new SavedConnection
         {
             Id = Guid.NewGuid(),
             TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             CreatedByUserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Local SQL Server (MSSQL)",
+            Name = "Azure SQL Server (MSSQL)",
             DatabaseType = DatabaseType.SqlServer,
-            AuthType = AuthType.WindowsAuth,
-            Host = @"localhost\SQLEXPRESS",
-            Port = 1433,
-            DatabaseName = "master",
-            Username = "sa",
-            EncryptedPassword = "",
-            IsReadOnly = false,
-            EnforceSsl = false,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        });
-
-        // 3. Local PostgreSQL Engine
-        dbContext.SavedConnections.Add(new SavedConnection
-        {
-            Id = Guid.NewGuid(),
-            TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-            CreatedByUserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Local PostgreSQL DB",
-            DatabaseType = DatabaseType.PostgreSql,
             AuthType = AuthType.BasicPassword,
-            Host = "localhost",
-            Port = 5432,
-            DatabaseName = "postgres",
-            Username = "postgres",
-            EncryptedPassword = enc.Encrypt("postgres"),
+            Host = "azure-sql-cluster.database.windows.net",
+            Port = 1433,
+            DatabaseName = "enterprise_dw",
+            Username = "cloud_admin",
+            EncryptedPassword = enc.Encrypt("AzureMssqlPass2026!"),
             IsReadOnly = false,
-            EnforceSsl = false,
+            EnforceSsl = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
 
-        // 4. Local MySQL Engine
+        // 3. Oracle Cloud Database (OCI)
         dbContext.SavedConnections.Add(new SavedConnection
         {
             Id = Guid.NewGuid(),
             TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             CreatedByUserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Local MySQL DB",
+            Name = "Oracle Cloud Database (OCI)",
+            DatabaseType = DatabaseType.Oracle,
+            AuthType = AuthType.BasicPassword,
+            Host = "oci-db.us-ashburn-1.oraclecloud.com",
+            Port = 1521,
+            DatabaseName = "sales_autonomous",
+            Username = "admin",
+            EncryptedPassword = enc.Encrypt("OracleSecure2026!"),
+            IsReadOnly = false,
+            EnforceSsl = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        // 4. Google Cloud SQL (MySQL)
+        dbContext.SavedConnections.Add(new SavedConnection
+        {
+            Id = Guid.NewGuid(),
+            TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            CreatedByUserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Name = "Google Cloud SQL (MySQL)",
             DatabaseType = DatabaseType.MySql,
             AuthType = AuthType.BasicPassword,
-            Host = "localhost",
+            Host = "gcp-mysql-prod.internal",
             Port = 3306,
-            DatabaseName = "mysql",
-            Username = "root",
-            EncryptedPassword = enc.Encrypt("root"),
+            DatabaseName = "commerce_mysql",
+            Username = "app_user",
+            EncryptedPassword = enc.Encrypt("GcpMySqlPass2026!"),
             IsReadOnly = false,
-            EnforceSsl = false,
+            EnforceSsl = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
 
-        // 5. Local Demo SQLite DB
+        // 5. StoreHub Enterprise Demo DB (SQLite)
         dbContext.SavedConnections.Add(new SavedConnection
         {
             Id = Guid.NewGuid(),
             TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             CreatedByUserId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-            Name = "Local Demo SQLite DB",
+            Name = "StoreHub Enterprise Demo DB",
             DatabaseType = DatabaseType.Sqlite,
             AuthType = AuthType.BasicPassword,
             Host = "localhost",
@@ -273,6 +335,152 @@ using (var scope = app.Services.CreateScope())
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         });
+
+        // Seed Clean Enterprise Audit Logs
+        dbContext.AuditLogs.AddRange(
+            new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Timestamp = DateTime.UtcNow.AddMinutes(-5),
+                ClientIp = "192.168.1.104",
+                UserRole = "ADMIN",
+                Action = "EXECUTE_QUERY",
+                ConnectionName = "AWS RDS PostgreSQL Cloud",
+                DatabaseType = DatabaseType.PostgreSql,
+                TargetDatabase = "retail_production_db",
+                QueryText = "SELECT * FROM \"Products\" WHERE \"Category\" = 'Cloud Compute' LIMIT 50;",
+                QueryHash = "H7F29A4D",
+                ExecutionDurationMs = 2,
+                RowsAffected = 24,
+                RiskLevel = QueryRiskLevel.Safe,
+                Success = true
+            },
+            new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Timestamp = DateTime.UtcNow.AddMinutes(-12),
+                ClientIp = "192.168.1.104",
+                UserRole = "ADMIN",
+                Action = "EXECUTE_QUERY",
+                ConnectionName = "StoreHub Enterprise Demo DB",
+                DatabaseType = DatabaseType.Sqlite,
+                TargetDatabase = "StoreHub_Demo_DB",
+                QueryText = "SELECT Department, SUM(Salary) AS TotalBudget FROM Employees GROUP BY Department;",
+                QueryHash = "B819E02F",
+                ExecutionDurationMs = 1,
+                RowsAffected = 5,
+                RiskLevel = QueryRiskLevel.Safe,
+                Success = true
+            },
+            new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Timestamp = DateTime.UtcNow.AddMinutes(-25),
+                ClientIp = "10.0.4.15",
+                UserRole = "ADMIN",
+                Action = "EXECUTE_QUERY",
+                ConnectionName = "Azure SQL Server (MSSQL)",
+                DatabaseType = DatabaseType.SqlServer,
+                TargetDatabase = "enterprise_dw",
+                QueryText = "SELECT TOP 10 [CustomerName], SUM([TotalAmount]) AS Spend FROM [Orders] GROUP BY [CustomerName];",
+                QueryHash = "9F8102CD",
+                ExecutionDurationMs = 3,
+                RowsAffected = 5,
+                RiskLevel = QueryRiskLevel.Safe,
+                Success = true
+            },
+            new AuditLog
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+                Timestamp = DateTime.UtcNow.AddMinutes(-45),
+                ClientIp = "127.0.0.1",
+                UserRole = "ADMIN",
+                Action = "BACKUP_SNAPSHOT",
+                ConnectionName = "StoreHub Enterprise Demo DB",
+                DatabaseType = DatabaseType.Sqlite,
+                TargetDatabase = "StoreHub_Demo_DB",
+                QueryText = "DATABASE SNAPSHOT StoreHub_Daily_Snapshot_2026.bak",
+                QueryHash = "SNAP991A",
+                ExecutionDurationMs = 14,
+                RowsAffected = 0,
+                RiskLevel = QueryRiskLevel.Safe,
+                Success = true
+            }
+        );
+
+        // Seed Clean Pre-Configured BI Reports (Zero Execution Errors)
+        dbContext.SavedReports.AddRange(
+            new SavedReport
+            {
+                Id = Guid.NewGuid(),
+                Title = "Revenue by Order Status",
+                Description = "Aggregated customer order revenues grouped by fulfillment status.",
+                QueryText = "SELECT Status AS Category, SUM(TotalAmount) AS Value FROM Orders GROUP BY Status ORDER BY Value DESC;",
+                WidgetType = "ClusteredBarChart",
+                CategoryColumn = "Category",
+                MeasureColumn = "Value",
+                CreatedAt = DateTime.UtcNow
+            },
+            new SavedReport
+            {
+                Id = Guid.NewGuid(),
+                Title = "Average Salary by Department",
+                Description = "Departmental compensation analysis across active personnel.",
+                QueryText = "SELECT Department AS Category, AVG(Salary) AS Value FROM Employees GROUP BY Department ORDER BY Value DESC;",
+                WidgetType = "ClusteredColumnChart",
+                CategoryColumn = "Category",
+                MeasureColumn = "Value",
+                CreatedAt = DateTime.UtcNow
+            },
+            new SavedReport
+            {
+                Id = Guid.NewGuid(),
+                Title = "Inventory Stock by Category",
+                Description = "Current available warehouse unit counts by cloud hardware product category.",
+                QueryText = "SELECT Category AS Category, SUM(StockQuantity) AS Value FROM Products GROUP BY Category ORDER BY Value DESC;",
+                WidgetType = "DonutChart",
+                CategoryColumn = "Category",
+                MeasureColumn = "Value",
+                CreatedAt = DateTime.UtcNow
+            },
+            new SavedReport
+            {
+                Id = Guid.NewGuid(),
+                Title = "Top Customer Expenditures",
+                Description = "High-value enterprise customer volume breakdown.",
+                QueryText = "SELECT CustomerName AS Category, SUM(TotalAmount) AS Value FROM Orders GROUP BY CustomerName ORDER BY Value DESC LIMIT 10;",
+                WidgetType = "PieChart",
+                CategoryColumn = "Category",
+                MeasureColumn = "Value",
+                CreatedAt = DateTime.UtcNow
+            },
+            new SavedReport
+            {
+                Id = Guid.NewGuid(),
+                Title = "Product Catalog Unit Pricing",
+                Description = "Hardware catalog pricing distribution.",
+                QueryText = "SELECT Name AS Category, AVG(Price) AS Value FROM Products GROUP BY Name ORDER BY Value DESC LIMIT 10;",
+                WidgetType = "LineChart",
+                CategoryColumn = "Category",
+                MeasureColumn = "Value",
+                CreatedAt = DateTime.UtcNow
+            },
+            new SavedReport
+            {
+                Id = Guid.NewGuid(),
+                Title = "Department Headcount",
+                Description = "Total headcount allocation per enterprise division.",
+                QueryText = "SELECT Department AS Category, COUNT(Id) AS Value FROM Employees GROUP BY Department ORDER BY Value DESC;",
+                WidgetType = "StackedBarChart",
+                CategoryColumn = "Category",
+                MeasureColumn = "Value",
+                CreatedAt = DateTime.UtcNow
+            }
+        );
 
         dbContext.SaveChanges();
     }

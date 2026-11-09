@@ -2939,7 +2939,7 @@ export class AppComponent implements OnInit {
     const lower = text.toLowerCase().trim();
     const cleanPrompt = lower.replace(/[\s_\-]/g, '');
 
-    // Helper to match normalized names (e.g. 'filelogtable' matches 'FileLogTable')
+    // Helper to match normalized names (e.g. 'products' matches 'Products')
     const matchName = (candidateName: string): boolean => {
       const norm = candidateName.toLowerCase().replace(/[\s_\-]/g, '');
       return cleanPrompt.includes(norm);
